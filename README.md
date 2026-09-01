@@ -7,9 +7,7 @@ undangan lewat WhatsApp, dan checklist seserahan.
 Dipakai berdua saja — dua akun, satu data pernikahan, bisa dibuka dari HP kapan saja.
 Tidak ada sistem penjualan, langganan, atau panel admin.
 
-> **Status:** T0–T3 selesai. Login, onboarding + seeding, beranda, modul tamu (daftar,
-> pencarian, filter, import, ubah/hapus, grup, ekspor CSV, tombol WhatsApp), halaman
-> RSVP publik, checklist, dan anggaran sudah jalan. Seserahan dan profil belum.
+> **Status:** kelima modul jalan. Siap dicoba dengan proyek Supabase sungguhan.
 
 ---
 
@@ -134,11 +132,11 @@ Dipilih supaya bagian yang paling melelahkan kalau manual selesai lebih dulu.
 | ~~T1~~ | ~~Tamu & undangan: daftar, filter, import, deep link WA, halaman RSVP publik~~ — selesai |
 | ~~T2~~ | ~~Checklist & anggaran~~ — selesai |
 | ~~T3~~ | ~~Beranda: countdown, tugas bulan ini, ringkasan~~ — selesai |
-| T4 | Seserahan, profil, PWA/A2HS, ekspor data |
+| ~~T4~~ | ~~Seserahan, profil, PWA/A2HS, ekspor data~~ — selesai |
 
-Belum dikerjakan: modul seserahan, halaman profil (ubah data pernikahan, template
-pesan WhatsApp, URL undangan), ikon PWA, mode kirim beruntun, dan ubah/hapus
-pengeluaran dari UI. Kartu milestone di beranda juga belum.
+Yang sengaja ditunda karena bisa dikerjakan belakangan tanpa mengubah apa pun:
+ubah/hapus pengeluaran dari UI, ubah alokasi kategori anggaran, mode kirim WhatsApp
+beruntun, kartu milestone di beranda, buku ucapan, dan unggah foto nota.
 
 Tiap tahap berdiri sendiri dan langsung berguna, jadi berhenti di tahap mana pun tetap
 menyisakan sesuatu yang terpakai.

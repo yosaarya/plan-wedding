@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ProgressBar } from '@/components/ui/progress-bar'
@@ -61,13 +62,20 @@ export default async function ChecklistPage({ searchParams }: { searchParams: Se
 
   return (
     <div className="space-y-4">
-      <header>
-        <h1 className="font-[family-name:var(--font-display)] text-2xl leading-8 font-semibold text-ink-900">
-          Checklist
-        </h1>
-        <p className="tabular text-xs text-ink-500">
-          {selesai} dari {total} tugas selesai
-        </p>
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="font-[family-name:var(--font-display)] text-2xl leading-8 font-semibold text-ink-900">
+            Checklist
+          </h1>
+          <p className="tabular text-xs text-ink-500">
+            {selesai} dari {total} tugas selesai
+          </p>
+        </div>
+        {/* Seserahan punya halaman sendiri tapi bukan tab, karena lima tab adalah
+            batas kenyamanan di layar 360px (desain §5.2). */}
+        <Link href="/seserahan" className="shrink-0 pt-1 text-xs font-semibold text-brand-600">
+          Seserahan
+        </Link>
       </header>
 
       <Card>
