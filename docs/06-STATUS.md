@@ -161,6 +161,27 @@ tersendiri, bukan sekadar menambah input file.
 
 ---
 
+## Kalau melanjutkan, kerjakan dengan urutan ini
+
+Diurutkan menurut manfaat nyata dibagi usaha, bukan menurut nomor ID.
+
+| # | Kerjakan | Kenapa duluan | Perkiraan |
+|---|---|---|---|
+| 1 | **Coba seluruh alur di Supabase sungguhan** (RUNBOOK §2) | Belum pernah dijalankan di luar tes. Halaman RSVP yang paling rawan — RPC-nya baru diuji lewat psql, bukan lewat PostgREST | Setengah hari |
+| 2 | F0.7 — tambah akun kedua lewat UI | Sekarang harus lewat SQL. Ini satu-satunya langkah penyiapan yang butuh buka SQL Editor | Kecil |
+| 3 | F4.15 — halaman buku ucapan | Datanya **sudah terkumpul** di tabel `wishes` setiap kali tamu mengisi RSVP. Tanpa halaman ini, ucapan yang masuk tidak pernah terbaca | Kecil |
+| 4 | F6.5 — ekspor JSON menyeluruh | Cadangan sekarang baru daftar tamu. Checklist dan anggaran belum bisa diselamatkan | Kecil |
+| 5 | F1.7 — kartu milestone | Beranda terasa kurang tanpa pandangan jangka panjang | Sedang |
+| 6 | F4.14 — mode kirim WhatsApp beruntun | Baru terasa perlu saat menyebar ratusan undangan sekaligus | Sedang |
+| 7 | F3.9 — catatan vendor | Berguna saat sudah mulai membandingkan penawaran | Sedang |
+| 8 | F3.10, F6.1 — unggah gambar | **Butuh menyiapkan bucket Supabase Storage lebih dulu**, jadi bukan pekerjaan sekali duduk | Besar |
+| 9 | Tes E2E (B5.3) | Bernilai kalau kode ini masih dikembangkan berbulan-bulan | Besar |
+
+Butir 1 mendahului semuanya. Sebelum aplikasinya benar-benar dipakai dengan data
+sungguhan, menambah fitur adalah menumpuk pekerjaan di atas asumsi yang belum terbukti.
+
+---
+
 ## Yang ada di skema tapi belum disentuh kode
 
 Bukan kesalahan — semuanya sengaja disiapkan lebih dulu supaya penambahannya nanti tidak
