@@ -24,3 +24,6 @@ test-results/
 *.dump
 supabase/.branches/
 supabase/.temp/
+
+# Next.js
+next-env.d.ts

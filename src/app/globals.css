@@ -1,0 +1,89 @@
+@import 'tailwindcss';
+
+/*
+ * Token desain — sumbernya docs/03-DESIGN.md.
+ * Komponen TIDAK BOLEH menulis nilai warna atau ukuran font langsung;
+ * selalu lewat token di sini (aturan B1.4, panduan CLAUDE.md).
+ */
+@theme {
+  /* Netral hangat */
+  --color-cream-50: #fdf8f3;
+  --color-cream-100: #f8efe4;
+  --color-cream-200: #efe2d3;
+  --color-ink-900: #2a2320;
+  --color-ink-700: #574c45;
+  --color-ink-500: #8b7f76;
+  --color-ink-300: #c4b8ae;
+
+  /* Terracotta — warna merek */
+  --color-brand-50: #fbf0ea;
+  --color-brand-100: #f5dcce;
+  --color-brand-300: #dda184;
+  --color-brand-500: #c2703f;
+  --color-brand-600: #a85c31;
+  --color-brand-700: #86471f;
+
+  /* Sage — aksi positif */
+  --color-sage-50: #eaf6ef;
+  --color-sage-500: #2fa36b;
+  --color-sage-600: #248055;
+  --color-sage-700: #1b6341;
+
+  /* Blush — dekoratif saja, tidak pernah untuk teks */
+  --color-blush-200: #fbd8da;
+  --color-blush-400: #f3a9b0;
+
+  /* Semantik */
+  --color-warning: #c98a12;
+  --color-danger: #c0392b;
+  --color-info: #3a6ea5;
+
+  --radius-card: 20px;
+
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+
+  --shadow-card: 0 1px 2px rgb(42 35 32 / 0.04), 0 4px 12px rgb(42 35 32 / 0.05);
+  --shadow-raised: 0 2px 4px rgb(42 35 32 / 0.06), 0 12px 24px rgb(42 35 32 / 0.08);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-cream-50);
+    color: var(--color-ink-900);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 24px;
+  }
+
+  /* Cincin fokus selalu terlihat; tidak pernah outline:none tanpa pengganti. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+
+  /* Input minimum 16px supaya iOS tidak melakukan auto-zoom saat difokus. */
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  /* Angka pada tabel dan statistik harus rata secara vertikal. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

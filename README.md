@@ -7,7 +7,8 @@ undangan lewat WhatsApp, dan checklist seserahan.
 Dipakai berdua saja — dua akun, satu data pernikahan, bisa dibuka dari HP kapan saja.
 Tidak ada sistem penjualan, langganan, atau panel admin.
 
-> **Status:** skema database selesai dan lulus tes. Kode aplikasi belum ada.
+> **Status:** fondasi jalan (T0). Login, guard sesi, onboarding + seeding, dan beranda
+> sudah ada. Modul tamu, checklist, anggaran, dan seserahan belum.
 
 ---
 
@@ -26,9 +27,30 @@ Baca berurutan:
 Nomor aturan seperti `A5.9` atau `B3.1` dirujuk langsung dari komentar di dalam SQL —
 setiap keputusan di skema bisa ditelusuri ke alasannya.
 
+## Menjalankan aplikasi
+
+```bash
+npm install
+cp .env.example .env.local     # isi URL & anon key proyek Supabase
+npm run dev                    # http://localhost:3000
+```
+
+Seluruh pemeriksaan sekaligus:
+
+```bash
+npm run check                  # typecheck + lint + unit test
+npm run test:rls               # asersi isolasi data (butuh Postgres lokal)
+```
+
 ## Isi repositori
 
 ```
+src/
+  app/                Rute. (auth) publik, (app) terproteksi, /rsvp/[token] publik
+  components/         ui/ primitif, patterns/ komponen bersama
+  features/           Per domain: queries.ts, actions.ts, schema.ts, lib.ts
+  lib/                supabase/, auth/, format/, whatsapp/, constants.ts
+  proxy.ts            Penyegaran sesi + guard rute
 db/
   schema.sql          Skema kanonik PostgreSQL: tabel, enum, trigger, view, RLS, RPC
   seeds/              Template checklist (49 item), kategori anggaran, seserahan (32 item)

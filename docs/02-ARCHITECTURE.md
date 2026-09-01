@@ -32,17 +32,17 @@
 
 | Lapisan | Pilihan | Alasan |
 |---|---|---|
-| Framework | **Next.js 15** (App Router, TypeScript strict) | RSC + Server Actions memangkas kebutuhan menulis API layer; hosting mudah |
+| Framework | **Next.js 16** (App Router, Turbopack, TypeScript strict) | RSC + Server Actions memangkas kebutuhan menulis API layer; hosting mudah |
 | Bahasa | TypeScript 5.x, `strict: true` | Satu bahasa dari DB ke UI lewat tipe hasil-generate |
-| Styling | **Tailwind CSS v4** + komponen sendiri di atas **Radix UI primitives** | Kontrol penuh atas tampilan (produk ini menjual estetika), aksesibilitas dari Radix |
+| Styling | **Tailwind CSS v4**, token desain sebagai `@theme` | Token di `globals.css` adalah satu-satunya sumber warna & ukuran; komponen tidak pernah menulis nilai mentah |
 | Database | **PostgreSQL** via **Supabase** | RLS bawaan, auth terintegrasi, storage, biaya awal nol |
 | Auth | **Supabase Auth** (email+password, magic link) | Cocok persis dengan alur "akun dibuat otomatis, aktivasi lewat email" |
 | Storage | Supabase Storage (bucket privat) | Foto sampul, bukti nota |
 | Hosting | **Vercel** (region `sin1` Singapura) | Latensi terendah dari Indonesia; paket hobby cukup |
 | Email | Supabase Auth bawaan | Hanya untuk reset password. Tidak ada email transaksional lain di MVP |
 | Validasi | **Zod** | Satu skema dipakai bersama oleh form di klien dan Server Action di server |
-| Tabel & form | React Hook Form + Zod resolver | — |
-| Tes | Vitest (unit), Playwright (E2E), pgTAP (RLS) | — |
+| Form | Server Action + `FormData`, divalidasi Zod | Tanpa pustaka form tambahan; form di aplikasi ini sederhana |
+| Tes | Vitest (unit), psql (isolasi RLS) | Tes RLS ditulis sebagai SQL biasa dan dijalankan `./tests/rls/run.sh` |
 
 ### Alternatif yang dipertimbangkan dan ditolak
 
@@ -117,11 +117,12 @@ plan-wedding/
 │   │   ├── budget/
 │   │   ├── guests/
 │   │   └── seserahan/
+│   ├── proxy.ts                   # penyegaran sesi + guard rute (dulu middleware.ts)
 │   ├── lib/
-│   │   ├── supabase/              # klien server & klien browser
+│   │   ├── supabase/              # klien server, klien browser, penyegar sesi
 │   │   ├── auth/                  # requireSession, requireWedding
 │   │   ├── format/                # tanggal & mata uang id-ID
-│   │   ├── whatsapp/              # pembuat deep link & render template
+│   │   ├── whatsapp/              # normalisasi nomor, render template, deep link
 │   │   └── validation/            # skema Zod bersama
 │   └── types/database.ts          # hasil generate dari skema Supabase
 ├── public/                        # ikon PWA, manifest
@@ -217,7 +218,7 @@ lapisan pertama; RLS tetap menjadi lapisan kedua kalau setelan itu berubah.
 
 ### 6.3 Guard
 
-- `middleware.ts` — menyegarkan sesi, memblokir `(app)/*` tanpa sesi.
+- `src/proxy.ts` — menyegarkan sesi, memblokir rute non-publik tanpa sesi. (Next 16 mengganti nama konvensi `middleware` menjadi `proxy`.)
 - `requireSession()` — melempar `UnauthorizedError` bila tidak ada sesi.
 - `requireWedding()` — mengambil `wedding_id` aktif dari keanggotaan; melempar bila tidak ada.
 - Tidak ada guard entitlement atau admin — keduanya tidak ada di aplikasi ini.
