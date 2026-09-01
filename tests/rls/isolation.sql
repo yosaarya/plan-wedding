@@ -402,6 +402,31 @@ do $$ begin
     'anggota yang diundang melihat tepat satu pernikahan');
 end $$;
 
+-- -----------------------------------------------------------------------------
+-- Rate limit halaman RSVP publik (aturan B4.7)
+--
+-- Dijalankan paling akhir: blok ini sengaja menghabiskan kuota satu menit milik
+-- tamu tersebut, sehingga asersi apa pun sesudahnya akan ikut tertolak.
+-- -----------------------------------------------------------------------------
+reset role;
+set role anon;
+
+do $$
+declare i int;
+begin
+  -- Dua jawaban sudah tercatat sebelumnya; delapan lagi menyentuh batas 10.
+  for i in 1..8 loop
+    perform public.submit_rsvp(current_setting('test.tok'), 'attending', 1, null);
+  end loop;
+
+  begin
+    perform public.submit_rsvp(current_setting('test.tok'), 'attending', 1, null);
+    perform pg_temp.assert(false, 'submit_rsvp ke-11 seharusnya ditolak');
+  exception when too_many_connections then
+    perform pg_temp.assert(true, 'B4.7 submit_rsvp dibatasi 10 per menit per tamu');
+  end;
+end $$;
+
 reset role;
 \echo ''
 \echo '================================================'

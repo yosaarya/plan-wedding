@@ -53,9 +53,9 @@ src/
 db/
   schema.sql          Skema kanonik PostgreSQL: tabel, enum, trigger, view, RLS, RPC
   seeds/              Template checklist (49 item), kategori anggaran, seserahan (32 item)
-  migrations/         Migrasi forward-only (belum ada; schema.sql adalah baseline)
+  migrations/         Migrasi forward-only; schema.sql tetap mencerminkan bentuk akhir
 tests/rls/
-  isolation.sql       64 asersi: alur fungsional + isolasi data
+  isolation.sql       65 asersi: alur fungsional + isolasi data
   run.sh              Membangun ulang database bersih lalu menjalankan asersi
 docs/                 Lihat tabel di atas
 ```

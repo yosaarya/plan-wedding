@@ -330,6 +330,7 @@ create table public.rsvp_responses (
   created_at      timestamptz not null default now()
 );
 
+-- Menopang paginasi riwayat sekaligus penghitungan rate limit di submit_rsvp.
 create index rsvp_responses_guest_idx on public.rsvp_responses (guest_id, created_at desc);
 
 create table public.wishes (
@@ -763,6 +764,7 @@ returns jsonb language plpgsql volatile security definer
 set search_path = public, pg_temp as $$
 declare g public.guests;
         v_count int;
+        v_recent int;
 begin
   select * into g from public.guests
    where rsvp_token = p_token and deleted_at is null
@@ -770,6 +772,18 @@ begin
 
   if not found then
     raise exception 'Undangan tidak ditemukan' using errcode = 'no_data_found';
+  end if;
+
+  -- Rate limit ditegakkan di sini, bukan di edge middleware (aturan B4.7):
+  -- middleware serverless berjalan per-instance dan kehilangan hitungannya,
+  -- sehingga batas di sana mudah dilewati.
+  select count(*) into v_recent
+  from public.rsvp_responses
+  where guest_id = g.id and created_at > now() - interval '1 minute';
+
+  if v_recent >= 10 then
+    raise exception 'Terlalu banyak percobaan. Coba lagi sebentar lagi.'
+      using errcode = 'too_many_connections';
   end if;
 
   if p_status <> 'attending' then

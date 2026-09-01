@@ -153,7 +153,7 @@ langsung dari komentar di `db/schema.sql` dan `tests/rls/isolation.sql`.
 | B4.4 | Nomor HP, email, dan nama tamu TIDAK BOLEH muncul di log runtime, pesan error, maupun URL. |
 | B4.5 | `dangerouslySetInnerHTML` dilarang di seluruh basis kode. |
 | B4.6 | Unggahan dibatasi tipe MIME dan ukuran, disimpan di bucket privat, diakses lewat signed URL berumur ≤ 60 menit. |
-| B4.7 | Rate limit wajib pada submit RSVP (10/menit/IP), karena itu satu-satunya endpoint yang terbuka untuk publik. |
+| B4.7 | Rate limit wajib pada submit RSVP: 10 per menit per tamu, ditegakkan **di dalam fungsi database** `submit_rsvp`. Bukan di edge middleware — middleware serverless berjalan per-instance dan kehilangan hitungannya, sehingga batas di sana mudah dilewati. |
 | B4.8 | Setiap PR yang menyentuh RLS atau autentikasi WAJIB menyertakan tes isolasi data. |
 
 ### B5. Pengujian

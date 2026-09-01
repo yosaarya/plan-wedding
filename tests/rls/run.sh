@@ -49,11 +49,18 @@ for f in "$ROOT"/db/seeds/*.sql; do
 done
 
 echo "==> Menjalankan asersi"
+# `set -e` akan mematikan skrip pada psql yang gagal sebelum sempat mencetak
+# apa pun, sehingga kegagalan asersi jadi tak terlihat. Tangkap dulu, laporkan
+# sesudahnya.
+set +e
 out=$(psql -d "$DB" -v ON_ERROR_STOP=1 -f "$ROOT/tests/rls/isolation.sql" 2>&1)
+psql_status=$?
+set -e
+
 echo "$out" | sed 's/^psql:[^ ]* NOTICE:  //'
 
 passed=$(grep -c 'PASS  ' <<<"$out" || true)
-if grep -qE 'FAIL |ERROR:' <<<"$out"; then
+if [ "$psql_status" -ne 0 ] || grep -qE 'FAIL |ERROR:' <<<"$out"; then
   echo ""
   echo "HASIL: GAGAL ($passed asersi lulus sebelum kegagalan)"
   exit 1

@@ -346,7 +346,11 @@ public.submit_rsvp(p_token text, p_status text, p_count int, p_message text) ret
 Memvalidasi token & rentang `p_count` (0 ≤ count ≤ headcount), memperbarui `guests`,
 menyisipkan `rsvp_responses`, dan menyisipkan `wishes` bila ada pesan.
 Keduanya `security definer` dengan `search_path` terkunci, diberikan `execute` ke peran
-`anon`. Rate limit ditegakkan di edge middleware (10/menit/IP).
+`anon`.
+
+`submit_rsvp` juga menolak lebih dari **10 jawaban per menit per tamu**. Batas ini hidup
+di dalam fungsi, bukan di edge middleware: middleware pada hosting serverless berjalan
+per-instance dan kehilangan hitungannya setiap instance baru dibuat.
 
 ---
 

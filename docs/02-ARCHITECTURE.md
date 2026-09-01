@@ -322,7 +322,7 @@ ada di dalam browser**, dan **kami menyimpan nomor HP ratusan orang lain**.
 | Rahasia | Hanya di environment variable; `SUPABASE_SERVICE_ROLE_KEY` tidak pernah berprefiks `NEXT_PUBLIC_` (dan MVP ini tidak membutuhkannya sama sekali) |
 | Token RSVP | 32 karakter acak kriptografis, unik, bukan turunan dari `id` tamu |
 | Halaman RSVP publik | Hanya lewat dua RPC `SECURITY DEFINER` yang mengembalikan kolom terbatas — tidak pernah menyentuh tabel `guests` langsung |
-| Rate limit | Submit RSVP 10/menit/IP di edge middleware; login memakai batas bawaan Supabase |
+| Rate limit | Submit RSVP 10/menit per tamu, ditegakkan di dalam fungsi `submit_rsvp` sehingga tidak bergantung pada instance edge; login memakai batas bawaan Supabase |
 | Unggahan | Hanya `image/jpeg|png|webp`, maksimum 5 MB, bucket privat, diakses lewat signed URL ≤ 60 menit |
 | XSS | Tidak ada `dangerouslySetInnerHTML`; ucapan tamu di-render sebagai teks biasa |
 | Header | CSP, HSTS, `X-Content-Type-Options`, `Referrer-Policy: strict-origin-when-cross-origin` |
