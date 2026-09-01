@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Versi | 1.0 |
+| Versi | 2.0 — pemakaian pribadi |
 | Platform utama | Mobile web (PWA), 360–430 px |
 | Bahasa | id-ID |
 | Nada | Hangat, tenang, rapi. Bukan mewah-berlebihan, bukan korporat. |
@@ -76,7 +76,7 @@
 | Teks utama | `--ink-900` | Kontras 13:1 di atas cream-50 |
 | Teks sekunder | `--ink-700` | Kontras 6.4:1 |
 | Angka countdown | `--brand-500` | Elemen paling menonjol di beranda |
-| Tombol utama | `--sage-500`, teks putih | Konsisten dengan tombol "Beli" di halaman jualan |
+| Tombol utama | `--sage-500`, teks putih | Satu-satunya warna aksi positif; dipakai hemat, satu per layar |
 | Tombol sekunder | Garis `--brand-300`, teks `--brand-700` | — |
 | Aksi merusak | `--danger` | Hanya di dalam dialog konfirmasi atau ikon hapus |
 | Bar progres | Isi `--brand-500`, jalur `--cream-200` | Berubah `--warning` di 90–100%, `--danger` di > 100% |
@@ -310,7 +310,7 @@ Hormati `prefers-reduced-motion: reduce` — matikan transform, sisakan perubaha
 - Sapaan "kamu"/"kalian", bukan "Anda". Hangat tapi tidak lebay.
 - Tanpa jargon teknis. "Simpan", bukan "Submit". "Daftar tamu", bukan "Guest list".
 - Pesan error menjelaskan langkah berikutnya: "Nomor HP belum lengkap. Contoh: 081234567890."
-- Emoji dipakai sangat terbatas: hanya di judul kategori seserahan dan email.
+- Emoji dipakai sangat terbatas: hanya di judul kategori seserahan dan template pesan WhatsApp.
 - Notifikasi memakai kalimat aktif: "3 tugas jatuh tempo minggu ini."
 
 ---
@@ -341,8 +341,8 @@ Hormati `prefers-reduced-motion: reduce` — matikan transform, sisakan perubaha
 | Tamu | StatTile · pencarian · chip filter · daftar tamu · FAB |
 | Detail tamu | Data tamu · status RSVP · tombol WhatsApp · riwayat |
 | Import tamu | Tempel daftar / unggah CSV · pratinjau · konfirmasi |
-| Seserahan | Progres · daftar per kategori · rekomendasi produk |
+| Seserahan | Progres · daftar per kategori · tautan toko yang ditempel sendiri |
 | Profil | Data pernikahan · anggota · template WA · pengaturan · bantuan · keluar |
 | RSVP publik | Nama pengantin · tanggal & lokasi · pilihan hadir · jumlah orang · ucapan |
 | Onboarding | 4 langkah, satu pertanyaan per layar, indikator progres |
-| Aktivasi | Form buat password |
+| Masuk | Email + password, tautan "lupa password" |

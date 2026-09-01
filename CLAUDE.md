@@ -20,8 +20,8 @@ Repositori ini punya dokumen perancangan yang bersifat **normatif**. Baca sebelu
   (aturan A5.1, A5.9).
 - **Isolasi data.** Setiap kueri tabel domain menyertakan `.eq('wedding_id', weddingId)`
   secara eksplisit *meskipun* RLS aktif. Pertahanan berlapis (aturan B2.4).
-- **Service role.** `supabaseAdmin` hanya boleh diimpor dari `app/api/webhooks/*`,
-  `app/api/cron/*`, dan `app/admin/*` (aturan B2.2).
+- **Service role.** Tidak dipakai di aplikasi ini. Semua akses lewat JWT pengguna supaya
+  RLS selalu aktif (aturan B2.2).
 - **Halaman RSVP publik.** Tidak pernah menyentuh tabel `guests` langsung; hanya lewat
   `get_rsvp_context` / `submit_rsvp` (aturan A5.11).
 - **PII.** Nomor HP, email, dan nama tamu tidak pernah masuk log, Sentry, atau properti
@@ -35,6 +35,16 @@ Repositori ini punya dokumen perancangan yang bersifat **normatif**. Baca sebelu
   standar, dan asersi di `tests/rls/isolation.sql`. PR tanpa asersi isolasi tidak boleh
   di-merge (aturan B3.1, B4.8, B5.2).
 - Setelah mengubah skema, jalankan: `./tests/rls/run.sh`
+
+## Konteks
+
+Aplikasi ini dipakai oleh dua orang — calon pengantin — bukan dijual. Tidak ada
+pendaftaran mandiri, entitlement, webhook order, atau panel admin. Kalau menemukan
+sisa rujukan ke hal-hal itu di kode atau dokumen, itu peninggalan rancangan lama:
+hapus.
+
+RLS tetap wajib meski hanya berdua — anon key Supabase ada di dalam browser, dan kami
+menyimpan nomor HP ratusan tamu.
 
 ## Bahasa
 

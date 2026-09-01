@@ -2,9 +2,12 @@
 
 | Field | Value |
 |---|---|
-| Versi | 1.0 |
-| Status | Usulan untuk approval |
-| Prinsip | Mobile-first, serverless, biaya rendah, satu bahasa (TypeScript), keamanan di lapisan data |
+| Versi | 2.0 — pemakaian pribadi |
+| Status | Disetujui |
+| Prinsip | Mobile-first, serverless, muat di paket gratis, satu bahasa (TypeScript), keamanan di lapisan data |
+
+> Aplikasi dipakai berdua saja. Tidak ada lapisan penjualan: tanpa entitlement, tanpa
+> webhook order, tanpa panel admin. Akun dibuat sekali lewat dashboard Supabase.
 
 ---
 
@@ -20,7 +23,8 @@
 4. **Optimistic UI untuk aksi mikro.** Centang checklist dan ubah RSVP harus terasa
    instan; rekonsiliasi terjadi di belakang.
 5. **Satu sumber kebenaran per pernikahan.** Semua tabel domain membawa `wedding_id`.
-6. **Integrasi eksternal selalu punya jalur cadangan manual.** Webhook gagal → import CSV.
+6. **Data harus bisa keluar kapan saja.** Ekspor CSV/JSON mandiri, karena kehilangan
+   daftar tamu berarti mengulang kerja berjam-jam.
 
 ---
 
@@ -34,12 +38,9 @@
 | Database | **PostgreSQL** via **Supabase** | RLS bawaan, auth terintegrasi, storage, biaya awal nol |
 | Auth | **Supabase Auth** (email+password, magic link) | Cocok persis dengan alur "akun dibuat otomatis, aktivasi lewat email" |
 | Storage | Supabase Storage (bucket privat) | Foto sampul, bukti nota |
-| Email transaksional | **Resend** + React Email | Deliverability baik, template sebagai komponen React |
-| Hosting | **Vercel** (region `sin1` Singapura) | Latensi terendah untuk pengguna Indonesia |
-| Job terjadwal | Vercel Cron | Pengingat mingguan, arsip data |
-| Analitik | PostHog (self-host/cloud) | Funnel aktivasi & event produk |
-| Error tracking | Sentry | — |
-| Validasi | **Zod** | Satu skema untuk validasi form dan payload webhook |
+| Hosting | **Vercel** (region `sin1` Singapura) | Latensi terendah dari Indonesia; paket hobby cukup |
+| Email | Supabase Auth bawaan | Hanya untuk reset password. Tidak ada email transaksional lain di MVP |
+| Validasi | **Zod** | Satu skema dipakai bersama oleh form di klien dan Server Action di server |
 | Tabel & form | React Hook Form + Zod resolver | — |
 | Tes | Vitest (unit), Playwright (E2E), pgTAP (RLS) | — |
 
@@ -50,6 +51,7 @@
 | React Native / Flutter | Menambah 4+ minggu dan proses review store, sementara PWA memenuhi kebutuhan (A2HS sudah dijanjikan di halaman jualan) |
 | Firebase / Firestore | Kueri agregat (total budget, statistik tamu) canggung tanpa SQL; aturan keamanan lebih sulit diuji daripada RLS |
 | Backend terpisah (NestJS) | Overhead operasional tanpa manfaat pada skala ini |
+| Analitik & error tracking (PostHog/Sentry) | Tidak ada pengguna untuk dianalisis. Bug dilaporkan langsung oleh kami berdua |
 | Prisma sebagai satu-satunya akses data | Prisma memutus RLS jika memakai koneksi service role; kita memakai klien Supabase yang membawa JWT pengguna |
 
 ---
@@ -57,41 +59,26 @@
 ## 3. Diagram Konteks
 
 ```
-                    ┌───────────────────────────┐
-                    │   Marketplace Digital     │
-                    │   (Lynk.id / Mayar)       │
-                    └────────────┬──────────────┘
-                                 │ webhook order.paid (HMAC)
-                                 ▼
-┌──────────┐   HTTPS   ┌─────────────────────────────────────┐
-│ Browser  │◄─────────►│        Next.js @ Vercel (sin1)      │
-│ (PWA)    │           │  ┌──────────────┬─────────────────┐ │
-│ Mobile   │           │  │ RSC / Pages  │ Server Actions  │ │
-└────┬─────┘           │  ├──────────────┴─────────────────┤ │
-     │                 │  │ Route Handlers                 │ │
-     │ wa.me link      │  │  /api/webhooks/order           │ │
-     ▼                 │  │  /api/cron/reminders           │ │
-┌──────────┐           │  │  /api/export/*                 │ │
-│ WhatsApp │           │  └────────────────────────────────┘ │
-│ (klien   │           └───────┬──────────────┬──────────────┘
-│  user)   │                   │              │
-└──────────┘        JWT user   │              │ service role
-                    (RLS aktif)│              │ (khusus webhook/cron)
-                               ▼              ▼
-                    ┌──────────────────────────────────┐
-                    │  Supabase                        │
-                    │  ├─ PostgreSQL (RLS)             │
-                    │  ├─ Auth (users, sessions)       │
-                    │  └─ Storage (foto, nota)         │
-                    └──────────────────────────────────┘
-                               │
-                    ┌──────────▼──────────┐   ┌──────────────┐
-                    │ Resend (email)      │   │ PostHog      │
-                    └─────────────────────┘   │ Sentry       │
-                                              └──────────────┘
+┌──────────────┐   HTTPS   ┌──────────────────────────────────────┐
+│ Browser kami │◄─────────►│      Next.js @ Vercel (sin1)         │
+│ (PWA di HP)  │           │  ┌────────────────┬─────────────────┐│
+└──────┬───────┘           │  │ RSC / Halaman  │ Server Actions  ││
+       │                   │  ├────────────────┴─────────────────┤│
+       │ wa.me deep link   │  │ Route Handlers: /api/export/*    ││
+       ▼                   │  └──────────────────────────────────┘│
+┌──────────────┐           └──────────────┬───────────────────────┘
+│  WhatsApp    │                          │ JWT pengguna (RLS aktif)
+│ (di HP kami) │                          ▼
+└──────────────┘           ┌──────────────────────────────────┐
+                           │  Supabase                        │
+┌──────────────┐  RPC via  │  ├─ PostgreSQL (RLS)             │
+│ Browser tamu │──anon────►│  ├─ Auth (2 akun, dibuat manual) │
+│ /rsvp/{token}│           │  └─ Storage (foto sampul, nota)  │
+└──────────────┘           └──────────────────────────────────┘
 ```
 
----
+Tidak ada layanan pihak ketiga lain. Tamu tidak pernah menyentuh database secara
+langsung — hanya lewat dua fungsi RPC yang mengembalikan kolom terbatas (§6.4).
 
 ## 4. Struktur Direktori
 
@@ -107,10 +94,9 @@ plan-wedding/
 │   │   ├── (marketing)/           # landing, harga, bantuan, kebijakan privasi
 │   │   ├── (auth)/
 │   │   │   ├── masuk/
-│   │   │   ├── aktivasi/          # buat password dari magic link
-│   │   │   └── aktivasi/kirim-ulang/
+│   │   │   └── lupa-password/
 │   │   ├── (app)/                 # area terproteksi, memakai bottom nav
-│   │   │   ├── layout.tsx         # guard sesi + guard entitlement
+│   │   │   ├── layout.tsx         # guard sesi + guard pernikahan
 │   │   │   ├── beranda/
 │   │   │   ├── checklist/
 │   │   │   ├── anggaran/
@@ -119,11 +105,8 @@ plan-wedding/
 │   │   │   └── profil/
 │   │   ├── onboarding/
 │   │   ├── rsvp/[token]/          # PUBLIK, tanpa login
-│   │   ├── admin/                 # panel back office, guard peran admin
 │   │   └── api/
-│   │       ├── webhooks/order/
-│   │       ├── cron/reminders/
-│   │       └── export/[resource]/
+│   │       └── export/[resource]/ # unduh CSV/JSON untuk cadangan
 │   ├── components/
 │   │   ├── ui/                    # primitif: Button, Card, Sheet, Input, ...
 │   │   ├── patterns/              # StatTile, ProgressBar, EmptyState, ...
@@ -133,15 +116,13 @@ plan-wedding/
 │   │   ├── checklist/
 │   │   ├── budget/
 │   │   ├── guests/
-│   │   ├── seserahan/
-│   │   └── billing/
+│   │   └── seserahan/
 │   ├── lib/
-│   │   ├── supabase/              # klien server, klien browser, klien admin
+│   │   ├── supabase/              # klien server & klien browser
 │   │   ├── auth/                  # requireSession, requireWedding
 │   │   ├── format/                # tanggal & mata uang id-ID
 │   │   ├── whatsapp/              # pembuat deep link & render template
 │   │   └── validation/            # skema Zod bersama
-│   ├── emails/                    # template React Email
 │   └── types/database.ts          # hasil generate dari skema Supabase
 ├── public/                        # ikon PWA, manifest
 ├── tests/
@@ -170,8 +151,9 @@ features/guests/
 1. Komponen klien **tidak pernah** memanggil Supabase langsung untuk data domain.
    Baca lewat RSC, tulis lewat Server Action.
 2. Setiap Server Action diawali `const { user, weddingId } = await requireWedding()`.
-3. Klien service-role (`supabaseAdmin`) hanya boleh diimpor di `app/api/webhooks/*`,
-   `app/api/cron/*`, dan `app/admin/*`. Dijaga oleh aturan ESLint `no-restricted-imports`.
+3. Klien service-role (`supabaseAdmin`) **tidak dipakai sama sekali** di MVP ini — seluruh
+   akses lewat JWT pengguna sehingga RLS selalu aktif. Bila suatu saat dibutuhkan (mis.
+   cron pengingat), impornya dibatasi ke berkas itu saja lewat ESLint `no-restricted-imports`.
 4. Perhitungan uang memakai **integer rupiah** (`bigint` di DB, `number` di TS).
    Tidak ada floating point untuk nominal.
 
@@ -213,28 +195,32 @@ export async function updateGuestRsvp(input: unknown) {
 | `owner` | Satu pernikahan | Semua, termasuk mengundang/mencabut anggota dan menghapus pernikahan |
 | `partner` | Satu pernikahan | Baca & tulis semua modul; tidak bisa menghapus pernikahan |
 | `viewer` | Satu pernikahan | Baca saja (untuk keluarga, v1.1) |
-| `admin` | Global | Panel back office; **tidak** membaca isi data pernikahan kecuali untuk dukungan atas permintaan tertulis |
 | `anon` | Satu baris tamu | Halaman RSVP publik lewat token |
 
-### 6.2 Alur aktivasi (implementasi)
+### 6.2 Penyiapan akun (sekali saja)
 
-1. Webhook memanggil `supabaseAdmin.auth.admin.createUser({ email, email_confirm: true })`.
-   Idempoten: bila email sudah ada, ambil user yang ada.
-2. Insert baris `entitlements` dengan kunci unik `(provider, external_order_id)` — pemanggilan
-   webhook berulang tidak menggandakan data.
-3. `supabaseAdmin.auth.admin.generateLink({ type: 'recovery' })` → URL aktivasi.
-4. Resend mengirim email dengan URL tersebut. Umur token 7 hari.
-5. Halaman `/aktivasi` menukar token menjadi sesi, lalu menampilkan form set password
-   (`supabase.auth.updateUser({ password })`).
-6. Middleware mengarahkan pengguna tanpa pernikahan ke `/onboarding`.
+Tidak ada halaman pendaftaran. Dua akun dibuat sekali lewat dashboard Supabase
+(Authentication → Add user), lalu:
+
+1. Akun pertama login → belum punya pernikahan → diarahkan ke `/onboarding`.
+2. Onboarding membuat baris `weddings`, baris `wedding_members` dengan peran `owner`,
+   baris `events` untuk akad, lalu memanggil `seed_wedding_defaults()`.
+3. Akun kedua ditambahkan ke `wedding_members` sebagai `partner` — lewat halaman Profil
+   oleh `owner`, atau sekali lewat SQL editor Supabase.
+4. Setelahnya keduanya login biasa dengan email + password.
+
+Reset password memakai magic link bawaan Supabase Auth (`resetPasswordForEmail`).
+
+**Pendaftaran mandiri harus dimatikan** di Supabase (Authentication → Providers →
+Email → *Disable signup*), supaya tidak ada orang lain yang bisa membuat akun. Ini
+lapisan pertama; RLS tetap menjadi lapisan kedua kalau setelan itu berubah.
 
 ### 6.3 Guard
 
 - `middleware.ts` — menyegarkan sesi, memblokir `(app)/*` tanpa sesi.
 - `requireSession()` — melempar `UnauthorizedError` bila tidak ada sesi.
 - `requireWedding()` — mengambil `wedding_id` aktif dari keanggotaan; melempar bila tidak ada.
-- `requireEntitlement()` — memblokir bila entitlement dicabut (refund).
-- `requireAdmin()` — memeriksa klaim `app_metadata.role === 'admin'`.
+- Tidak ada guard entitlement atau admin — keduanya tidak ada di aplikasi ini.
 
 ### 6.4 Akses publik RSVP
 
@@ -262,26 +248,21 @@ auth.users
                                  ▼
                             weddings ──┬─ events (akad, resepsi, siraman, ...)
                                        ├─ checklist_categories ─ checklist_items
-                                       ├─ budget_categories ──── expenses
-                                       ├─ vendors ──────────────┘ (opsional)
-                                       ├─ guest_groups ───────── guests ─ rsvp_responses
-                                       ├─ seserahan_items ─────── (ref) product_catalog
+                                       ├─ budget_categories ──── expenses ─ vendors
+                                       ├─ guest_groups ───────── guests ─┬─ rsvp_responses
+                                       │                                 └─ wishes
+                                       ├─ seserahan_items
                                        ├─ milestones
-                                       └─ settings (template WA, URL undangan)
+                                       └─ wedding_settings (template WA, URL undangan)
 
-Global (tanpa wedding_id):
-   template_checklists / template_checklist_items
+Global (tanpa wedding_id, read-only bagi pengguna):
+   template_checklist_categories / template_checklist_items
    template_budget_categories
    template_seserahan_items
-   product_catalog
-   entitlements (per user)
-   webhook_events (log mentah)
 ```
 
 **Kunci desain:** setiap tabel domain membawa `wedding_id` secara langsung (denormalisasi
 sengaja) agar kebijakan RLS berupa satu predikat sederhana dan indeks tetap efisien.
-
----
 
 ## 8. Strategi Data & Kinerja
 
@@ -299,96 +280,90 @@ sengaja) agar kebijakan RLS berupa satu predikat sederhana dan indeks tetap efis
 
 ## 9. Integrasi Eksternal
 
-### 9.1 Webhook order
+Hanya satu, dan tanpa API.
 
-`POST /api/webhooks/order`
+### 9.1 WhatsApp
 
-- Verifikasi HMAC-SHA256 dari header `X-Signature` memakai `ORDER_WEBHOOK_SECRET`,
-  dibandingkan dengan `timingSafeEqual`.
-- Simpan payload mentah ke `webhook_events` **sebelum** diproses (untuk replay).
-- Proses idempoten dengan kunci `(provider, external_order_id)`.
-- Selalu balas `200` setelah payload tersimpan; kegagalan pemrosesan diselesaikan lewat
-  antrean retry, bukan dengan membuat marketplace mengirim ulang.
-- Adapter per provider di `features/billing/providers/{lynk,mayar}.ts` yang menormalkan
-  payload ke bentuk `NormalizedOrder`.
-
-### 9.2 WhatsApp
-
-Tidak ada integrasi API. Deep link dibuat di klien:
+Deep link dibuat di klien, dibuka di tab baru, lalu pesan dikirim sendiri dari WhatsApp
+milik kami:
 
 ```
 https://wa.me/{nomor E.164 tanpa +}?text={encodeURIComponent(pesan)}
 ```
 
-Normalisasi nomor Indonesia: `0812…` / `+62812…` / `62812…` → `62812…`.
-Nomor tidak valid → tombol dinonaktifkan dengan penjelasan, bukan error.
+Normalisasi nomor Indonesia sebelum dipakai: `0812…` / `+62812…` / `62812…` → `62812…`.
+Nomor tidak valid membuat tombol nonaktif dengan penjelasan, bukan error.
 
-### 9.3 Email (Resend)
+Template pesan disimpan di `wedding_settings.whatsapp_template` dan dapat diedit dari
+halaman Profil. Placeholder yang didukung: `{nama}`, `{pria}`, `{wanita}`, `{tanggal}`,
+`{link}`.
 
-| Template | Pemicu |
-|---|---|
-| `AktivasiAkun` | Webhook order sukses |
-| `KirimUlangAktivasi` | Permintaan dari halaman publik (rate limit 3/jam/email) |
-| `PengingatMingguan` | Cron Senin 08:00 WIB, berisi tugas jatuh tempo minggu ini |
-| `RingkasanHariH` | Cron, H-7 |
+Alasan tidak memakai WhatsApp Business API: berbiaya, butuh verifikasi bisnis, dan
+mengirim ratusan pesan dari nomor baru berisiko diblokir. Deep link membuat pesan
+terkirim dari nomor pribadi kami sendiri, persis seperti mengetik manual — hanya tanpa
+copy-paste.
 
----
+### 9.2 Email
+
+Hanya reset password, memakai layanan bawaan Supabase Auth. Tidak ada email
+transaksional lain di MVP. Bila pengingat mingguan (F6.6) jadi dikerjakan, ia memakai
+Vercel Cron + satu penyedia email, dan itu satu-satunya penambahan.
 
 ## 10. Keamanan
 
+Meski hanya dipakai berdua, dua hal membuat keamanan tetap serius: **anon key Supabase
+ada di dalam browser**, dan **kami menyimpan nomor HP ratusan orang lain**.
+
 | Area | Kontrol |
 |---|---|
-| Isolasi data | RLS `ENABLE` + `FORCE` di seluruh tabel domain; ditolak secara default |
-| Rahasia | Hanya di environment variable; `SUPABASE_SERVICE_ROLE_KEY` tidak pernah punya prefiks `NEXT_PUBLIC_` |
-| Webhook | Verifikasi HMAC + toleransi timestamp 5 menit untuk mencegah replay |
-| Token RSVP | 32 karakter acak, unik, dapat di-rotasi per tamu |
-| Rate limit | Login 5/menit/IP, kirim ulang aktivasi 3/jam/email, submit RSVP 10/menit/IP |
-| Unggahan | Hanya `image/jpeg|png|webp`, maksimum 5 MB, disimpan di bucket privat, diakses lewat signed URL 60 menit |
+| Isolasi data | RLS `ENABLE` + `FORCE` di seluruh tabel domain; ditolak secara default. Ini yang menahan anon key publik, bukan kode aplikasi |
+| Pendaftaran | Signup mandiri dimatikan di Supabase; akun dibuat manual |
+| Rahasia | Hanya di environment variable; `SUPABASE_SERVICE_ROLE_KEY` tidak pernah berprefiks `NEXT_PUBLIC_` (dan MVP ini tidak membutuhkannya sama sekali) |
+| Token RSVP | 32 karakter acak kriptografis, unik, bukan turunan dari `id` tamu |
+| Halaman RSVP publik | Hanya lewat dua RPC `SECURITY DEFINER` yang mengembalikan kolom terbatas — tidak pernah menyentuh tabel `guests` langsung |
+| Rate limit | Submit RSVP 10/menit/IP di edge middleware; login memakai batas bawaan Supabase |
+| Unggahan | Hanya `image/jpeg|png|webp`, maksimum 5 MB, bucket privat, diakses lewat signed URL ≤ 60 menit |
 | XSS | Tidak ada `dangerouslySetInnerHTML`; ucapan tamu di-render sebagai teks biasa |
 | Header | CSP, HSTS, `X-Content-Type-Options`, `Referrer-Policy: strict-origin-when-cross-origin` |
-| Audit | Tabel `activity_log` untuk aksi destruktif (hapus tamu massal, hapus pernikahan) |
-| PII | Nomor HP tamu tidak pernah masuk log, analitik, atau pesan error |
+| PII | Nomor HP dan nama tamu tidak pernah masuk log atau pesan error |
 
----
+## 11. Pemantauan
 
-## 11. Observabilitas
+Seperlunya saja — tidak ada pengguna lain yang perlu dijaga pengalamannya.
 
-| Sinyal | Alat | Ambang alarm |
-|---|---|---|
-| Error aplikasi | Sentry | > 1% request 5 menit |
-| Webhook gagal | Sentry + email admin | Satu kali gagal langsung memberi tahu |
-| Funnel aktivasi | PostHog | Aktivasi < 70% dalam 24 jam |
-| Kinerja | Vercel Analytics | LCP p75 > 2.5 s |
-| Kesehatan DB | Supabase metrics | Koneksi > 70% kuota |
-
-Event produk yang wajib dikirim: `order_received`, `activation_email_sent`,
-`account_activated`, `onboarding_completed`, `checklist_item_completed`,
-`expense_created`, `guest_created`, `guest_bulk_imported`, `whatsapp_invite_opened`,
-`rsvp_submitted`, `seserahan_item_completed`, `a2hs_installed`.
-
----
+- Log runtime Vercel untuk menelusuri error saat ada yang aneh.
+- Supabase dashboard untuk kesehatan database dan pemakaian kuota.
+- Backup: point-in-time recovery bawaan Supabase, ditambah ekspor CSV/JSON manual
+  sebelum tiap perubahan besar. Ekspor mandiri ini yang paling penting — ia tidak
+  bergantung pada layanan mana pun tetap hidup.
 
 ## 12. Deployment & Lingkungan
 
 | Lingkungan | Branch | Database |
 |---|---|---|
 | Production | `main` | Proyek Supabase `prod` |
-| Preview | setiap PR | Proyek Supabase `staging` (data anonim) |
-| Local | — | Supabase CLI (Docker) |
+| Local | — | Supabase CLI (Docker), atau Postgres lokal + stub di `tests/rls/run.sh` |
 
-**Pipeline CI (wajib hijau sebelum merge):** typecheck → lint → unit test → tes RLS →
-build → E2E Playwright pada preview.
+Tidak ada lingkungan staging terpisah: perubahan diuji lokal, dan tes isolasi
+(`./tests/rls/run.sh`) harus lulus sebelum skema diterapkan ke produksi.
 
 **Migrasi:** hanya maju (forward-only), satu file per perubahan, dinamai
-`NNNN_deskripsi.sql`, dijalankan otomatis saat deploy. Perubahan yang merusak dilakukan
-dalam dua tahap (tambah kolom baru → backfill → hapus kolom lama pada rilis berikutnya).
+`NNNN_deskripsi.sql`. Perubahan yang merusak dilakukan dalam dua tahap (tambah kolom
+baru → backfill → hapus kolom lama pada rilis berikutnya).
 
-**Backup:** point-in-time recovery 7 hari + dump harian ke object storage, retensi 30 hari.
-Uji restore dilakukan setiap kuartal.
-
----
+**Backup:** point-in-time recovery bawaan Supabase, ditambah ekspor manual sebelum
+perubahan besar.
 
 ## 13. Jalur Evolusi
+
+| Kemungkinan | Penambahan | Dampak arsitektur |
+|---|---|---|
+| Acara adat berbilang | Menampilkan siraman, midodareni, ngunduh mantu | Tabel `events` sudah menampungnya — hanya pekerjaan UI |
+| Pengingat mingguan | Email tugas jatuh tempo | Vercel Cron + satu penyedia email |
+| Antrean tulis offline | Mencatat saat sinyal hilang | Service worker + IndexedDB |
+| Ekspor PDF rundown | Untuk dibagikan ke keluarga & vendor | Renderer PDF di route handler |
+| Akses lihat-saja untuk keluarga | Peran `viewer` | Enum `member_role` sudah punya `viewer`; batas 2 anggota hanya berlaku untuk peran penulis |
+
 
 | Versi | Penambahan | Dampak arsitektur |
 |---|---|---|

@@ -1,6 +1,6 @@
 -- =============================================================================
 -- plan-wedding — Skema kanonik PostgreSQL / Supabase
--- Versi 1.0
+-- Versi 2.0 — pemakaian pribadi (dua akun, tanpa lapisan penjualan)
 --
 -- File ini adalah bentuk akhir skema yang diharapkan. Perubahan produksi
 -- dilakukan lewat db/migrations/NNNN_*.sql (forward-only, aturan B3.6).
@@ -15,7 +15,6 @@ create extension if not exists "pg_trgm";
 -- =============================================================================
 
 create type member_role         as enum ('owner', 'partner', 'viewer');
-create type entitlement_status  as enum ('active', 'revoked', 'expired');
 create type event_type          as enum ('akad','resepsi','lamaran','siraman',
                                          'midodareni','ngunduh_mantu','pengajian','lainnya');
 create type task_priority       as enum ('low', 'normal', 'high');
@@ -47,7 +46,7 @@ returns text language sql volatile as $$
 $$;
 
 -- =============================================================================
--- 3. PROFIL & ENTITLEMENT
+-- 3. PROFIL
 -- =============================================================================
 
 create table public.profiles (
@@ -62,28 +61,6 @@ create table public.profiles (
 );
 
 create index profiles_email_idx on public.profiles (lower(email));
-
-create table public.entitlements (
-  id                uuid primary key default gen_random_uuid(),
-  user_id           uuid references public.profiles(id) on delete set null,
-  email             text not null,
-  provider          text not null,               -- lynk | mayar | manual
-  external_order_id text not null,
-  product_code      text not null default 'basic',
-  amount            bigint not null default 0 check (amount >= 0),
-  status            entitlement_status not null default 'active',
-  purchased_at      timestamptz not null default now(),
-  activated_at      timestamptz,
-  revoked_at        timestamptz,
-  revoke_reason     text,
-  created_at        timestamptz not null default now(),
-  updated_at        timestamptz not null default now(),
-  -- Idempotensi webhook (aturan A1.6): order yang sama tidak pernah menggandakan hak akses.
-  constraint entitlements_provider_order_key unique (provider, external_order_id)
-);
-
-create index entitlements_email_idx  on public.entitlements (lower(email));
-create index entitlements_user_idx   on public.entitlements (user_id) where status = 'active';
 
 -- =============================================================================
 -- 4. PERNIKAHAN & KEANGGOTAAN
@@ -369,27 +346,8 @@ create table public.wishes (
 create index wishes_wedding_idx on public.wishes (wedding_id, created_at desc);
 
 -- =============================================================================
--- 10. SESERAHAN & KATALOG PRODUK
+-- 10. SESERAHAN
 -- =============================================================================
-
-create table public.product_catalog (
-  id           uuid primary key default gen_random_uuid(),
-  name         text not null,
-  category     text not null,
-  brand        text,
-  image_url    text,
-  price_min    bigint check (price_min is null or price_min >= 0),
-  price_max    bigint check (price_max is null or price_max >= 0),
-  marketplace  text,
-  product_url  text,
-  is_affiliate boolean not null default false,  -- wajib diungkap di UI (aturan A6.3)
-  is_active    boolean not null default true,
-  created_at   timestamptz not null default now(),
-  updated_at   timestamptz not null default now(),
-  check (price_min is null or price_max is null or price_max >= price_min)
-);
-
-create index product_catalog_category_idx on public.product_catalog (category) where is_active;
 
 create table public.seserahan_items (
   id              uuid primary key default gen_random_uuid(),
@@ -402,7 +360,7 @@ create table public.seserahan_items (
   is_purchased    boolean not null default false,
   purchased_at    timestamptz,
   tray_number     int,
-  product_id      uuid references public.product_catalog(id) on delete set null,
+  product_url     text,                            -- tautan toko, ditempel sendiri
   expense_id      uuid references public.expenses(id) on delete set null,
   note            text,
   sort_order      int not null default 0,
@@ -441,47 +399,6 @@ create table public.wedding_settings (
   created_at             timestamptz not null default now(),
   updated_at             timestamptz not null default now()
 );
-
-create table public.notifications (
-  id         uuid primary key default gen_random_uuid(),
-  user_id    uuid not null references public.profiles(id) on delete cascade,
-  wedding_id uuid references public.weddings(id) on delete cascade,
-  type       text not null,
-  title      text not null,
-  body       text,
-  read_at    timestamptz,
-  created_at timestamptz not null default now()
-);
-
-create index notifications_user_idx on public.notifications (user_id, created_at desc);
-
--- Log mentah webhook: disimpan sebelum diproses agar bisa di-replay (aturan B4.3).
-create table public.webhook_events (
-  id              uuid primary key default gen_random_uuid(),
-  provider        text not null,
-  event_type      text,
-  payload         jsonb not null,
-  signature_valid boolean not null default false,
-  processed_at    timestamptz,
-  error           text,
-  created_at      timestamptz not null default now()
-);
-
-create index webhook_events_unprocessed_idx
-  on public.webhook_events (created_at) where processed_at is null;
-
-create table public.activity_log (
-  id           uuid primary key default gen_random_uuid(),
-  actor_id     uuid references public.profiles(id) on delete set null,
-  wedding_id   uuid references public.weddings(id) on delete cascade,
-  action       text not null,
-  target_table text,
-  target_id    uuid,
-  metadata     jsonb,
-  created_at   timestamptz not null default now()
-);
-
-create index activity_log_wedding_idx on public.activity_log (wedding_id, created_at desc);
 
 -- =============================================================================
 -- 12. TABEL TEMPLATE (global, read-only bagi pengguna)
@@ -530,9 +447,9 @@ do $$
 declare t text;
 begin
   foreach t in array array[
-    'profiles','entitlements','weddings','wedding_members','events',
+    'profiles','weddings','wedding_members','events',
     'checklist_categories','checklist_items','budget_categories','vendors','expenses',
-    'guest_groups','guests','wishes','product_catalog','seserahan_items',
+    'guest_groups','guests','wishes','seserahan_items',
     'milestones','wedding_settings'
   ] loop
     execute format(
@@ -579,7 +496,7 @@ create trigger wedding_members_limit
   before insert on public.wedding_members
   for each row execute function public.enforce_member_limit();
 
--- Membuat profil saat user auth dibuat, lalu menautkan entitlement dengan email sama.
+-- Membuat baris profiles setiap kali akun auth dibuat.
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer
 set search_path = public, pg_temp as $$
@@ -587,10 +504,6 @@ begin
   insert into public.profiles (id, email, full_name)
   values (new.id, new.email, new.raw_user_meta_data ->> 'full_name')
   on conflict (id) do nothing;
-
-  update public.entitlements
-     set user_id = new.id
-   where user_id is null and lower(email) = lower(new.email);
 
   return new;
 end;
@@ -697,10 +610,10 @@ do $$
 declare t text;
 begin
   foreach t in array array[
-    'profiles','entitlements','weddings','wedding_members','events',
+    'profiles','weddings','wedding_members','events',
     'checklist_categories','checklist_items','budget_categories','vendors','expenses',
     'guest_groups','guests','rsvp_responses','wishes','seserahan_items','milestones',
-    'wedding_settings','notifications','webhook_events','activity_log','product_catalog',
+    'wedding_settings',
     'template_checklist_categories','template_checklist_items',
     'template_budget_categories','template_seserahan_items'
   ] loop
@@ -737,10 +650,6 @@ create policy profiles_self_select on public.profiles for select using (id = aut
 create policy profiles_self_update on public.profiles for update
   using (id = auth.uid()) with check (id = auth.uid());
 
--- entitlements: baca milik sendiri; penulisan hanya oleh service role (aturan A1.x).
-create policy entitlements_self_select on public.entitlements for select
-  using (user_id = auth.uid());
-
 -- weddings: anggota boleh baca & ubah; hanya owner yang boleh menghapus.
 create policy weddings_member_select on public.weddings for select
   using (owner_id = auth.uid() or public.is_wedding_member(id));
@@ -765,17 +674,12 @@ create policy members_owner_insert on public.wedding_members for insert
 create policy members_owner_delete on public.wedding_members for delete
   using (public.is_wedding_owner(wedding_id));
 
--- notifications: hanya milik sendiri.
-create policy notifications_self on public.notifications for select using (user_id = auth.uid());
-create policy notifications_self_update on public.notifications for update
-  using (user_id = auth.uid()) with check (user_id = auth.uid());
-
 -- Tabel template & katalog: baca untuk semua pengguna terautentikasi, tulis service role.
 do $$
 declare t text;
 begin
   foreach t in array array[
-    'product_catalog','template_checklist_categories','template_checklist_items',
+    'template_checklist_categories','template_checklist_items',
     'template_budget_categories','template_seserahan_items'
   ] loop
     execute format(
@@ -783,10 +687,8 @@ begin
   end loop;
 end $$;
 
--- webhook_events & activity_log sengaja tanpa policy: hanya service role yang bisa akses.
-
 -- =============================================================================
--- 15b. GRANT
+-- 16. GRANT
 -- RLS menentukan BARIS mana yang terlihat; GRANT menentukan apakah peran boleh
 -- menyentuh tabelnya sama sekali. Keduanya diperlukan.
 -- =============================================================================
@@ -805,23 +707,17 @@ alter default privileges in schema public
 alter default privileges in schema public
   grant all on tables to service_role;
 
--- Tabel yang tidak boleh disentuh pengguna sama sekali; hanya service role.
-revoke all on public.webhook_events, public.activity_log from anon, authenticated;
-
--- Katalog & template bersifat read-only bagi pengguna (aturan A6.2).
+-- Template bersifat read-only bagi pengguna: ia hanya bahan untuk seeding,
+-- bukan data yang dipakai sehari-hari (aturan A6.2).
 revoke insert, update, delete on
-  public.product_catalog,
   public.template_checklist_categories,
   public.template_checklist_items,
   public.template_budget_categories,
   public.template_seserahan_items
 from authenticated;
 
--- Entitlement hanya ditulis oleh service role lewat webhook (aturan A1.x).
-revoke insert, update, delete on public.entitlements from authenticated;
-
 -- =============================================================================
--- 16. RPC PUBLIK UNTUK RSVP
+-- 17. RPC PUBLIK UNTUK RSVP
 -- Halaman /rsvp/[token] tidak menyentuh tabel guests secara langsung (aturan A5.11).
 -- =============================================================================
 
@@ -906,7 +802,7 @@ grant execute on function public.get_rsvp_context(text) to anon, authenticated;
 grant execute on function public.submit_rsvp(text, rsvp_status, int, text) to anon, authenticated;
 
 -- =============================================================================
--- 17. SEEDING DEFAULT PERNIKAHAN
+-- 18. SEEDING DEFAULT PERNIKAHAN
 -- Dipanggil sekali di akhir onboarding; idempoten (aturan A3.1, §13 docs/05).
 -- =============================================================================
 

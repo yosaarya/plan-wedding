@@ -2,28 +2,29 @@
 
 | Field | Value |
 |---|---|
-| Versi | 1.0 |
+| Versi | 2.0 — pemakaian pribadi |
 | Sifat | Normatif. "HARUS" = wajib, "TIDAK BOLEH" = larangan, "SEBAIKNYA" = anjuran kuat. |
 
 Dokumen ini adalah rujukan saat terjadi perdebatan. Jika kode dan dokumen ini berbeda,
 salah satunya bug — perbaiki, jangan diamkan.
 
+**Penomoran aturan sengaja tidak diubah** meski isi A1 dirombak, karena nomornya dirujuk
+langsung dari komentar di `db/schema.sql` dan `tests/rls/isolation.sql`.
+
 ---
 
 ## Bagian A — Aturan Bisnis (Business Rules)
 
-### A1. Akses & Entitlement
+### A1. Akses
 
 | # | Aturan |
 |---|---|
-| A1.1 | Satu pembelian memberi **satu entitlement seumur hidup** kepada **satu email**. |
-| A1.2 | Satu entitlement memberi hak membuat **maksimum 1 pernikahan**. |
-| A1.3 | Satu pernikahan memiliki **maksimum 2 anggota** dengan hak tulis (`owner` + `partner`) pada paket Basic. |
-| A1.4 | Pengguna tanpa entitlement aktif HARUS diarahkan ke halaman penjualan; data lamanya tetap disimpan, tidak dihapus. |
-| A1.5 | Refund/chargeback menonaktifkan entitlement (`status = 'revoked'`). Data pengguna disimpan 30 hari lalu diarsipkan, TIDAK langsung dihapus. |
-| A1.6 | Entitlement identik dari webhook berulang (`provider` + `external_order_id` sama) HARUS diabaikan tanpa error. |
-| A1.7 | Admin BOLEH memindahkan entitlement ke email lain hanya atas permintaan pembeli yang terverifikasi, dan aksi ini WAJIB tercatat di `activity_log`. |
-| A1.8 | Token aktivasi berlaku **7 hari**. Setelah itu pengguna memakai jalur kirim ulang, dibatasi **3 permintaan per jam per email**. |
+| A1.1 | Aplikasi dipakai oleh **dua akun**, dibuat sekali lewat dashboard Supabase. Tidak ada halaman pendaftaran mandiri. |
+| A1.2 | Pendaftaran mandiri HARUS dimatikan di setelan Supabase Auth. Ini lapisan pertama; RLS adalah lapisan kedua yang tetap menahan meski setelan itu berubah. |
+| A1.3 | Satu pernikahan memiliki **maksimum 2 anggota dengan hak tulis** (`owner` + `partner`). Ditegakkan trigger `enforce_member_limit`, bukan hanya UI. |
+| A1.4 | Peran `viewer` (baca saja) tersedia di skema tapi tidak dipakai di MVP. Ia tidak dihitung dalam batas A1.3. |
+| A1.5 | Reset password memakai magic link bawaan Supabase Auth. |
+| A1.6 | Tidak ada peran admin dan tidak ada panel back office. Perawatan data yang jarang dilakukan lewat SQL editor Supabase. |
 
 ### A2. Data Pernikahan
 
@@ -35,6 +36,7 @@ salah satunya bug — perbaiki, jangan diamkan.
 | A2.4 | Tanggal hari-H boleh berada di masa lalu (pengguna membeli setelah menikah, atau menunda). Sistem TIDAK BOLEH menolaknya; UI beralih ke mode pascaacara. |
 | A2.5 | Mengubah tanggal hari-H TIDAK menggeser tenggat item checklist yang sudah ada. Sistem menawarkan "geser semua tenggat?" sebagai pilihan eksplisit. |
 | A2.6 | Menghapus pernikahan adalah aksi `owner` saja, butuh mengetik ulang nama pasangan sebagai konfirmasi, dan bersifat soft delete 30 hari. |
+| A2.7 | Data WAJIB bisa diekspor kapan saja tanpa bergantung pada layanan mana pun tetap hidup (CSV per tabel, atau JSON utuh). |
 
 ### A3. Checklist
 
@@ -89,22 +91,18 @@ salah satunya bug — perbaiki, jangan diamkan.
 | # | Aturan |
 |---|---|
 | A6.1 | Daftar seserahan di-seed dari template saat onboarding, sama seperti checklist. |
-| A6.2 | Rekomendasi produk berasal dari katalog global read-only; pengguna TIDAK BOLEH mengubahnya. |
-| A6.3 | Jika tautan produk adalah tautan afiliasi, UI WAJIB mencantumkan keterangan afiliasi. |
+| A6.2 | Tabel `template_*` bersifat read-only bagi aplikasi: ia bahan untuk seeding, bukan data harian. Mengubahnya dilakukan lewat migrasi, bukan lewat UI. |
+| A6.3 | Tautan toko per item ditempel sendiri (`seserahan_items.product_url`). Tidak ada katalog terkurasi yang harus dirawat. |
 | A6.4 | Menandai item seserahan "sudah dibeli" dengan harga aktual SEBAIKNYA menawarkan pencatatan otomatis ke kategori anggaran "Mahar & Seserahan" — sebagai tawaran, bukan otomatis diam-diam. |
-| A6.5 | Harga di katalog adalah **kisaran estimasi**, WAJIB berlabel "estimasi" dan tanggal pembaruan terakhir. |
+| A6.5 | Harga hasil seed adalah **estimasi kasar**, WAJIB berlabel "estimasi" di UI supaya tidak dikira harga sebenarnya. |
 
 ### A7. Notifikasi
 
 | # | Aturan |
 |---|---|
-| A7.1 | Email pengingat maksimum **1 per minggu per pernikahan** (Senin 08:00 WIB), plus 1 pengingat H-7. |
-| A7.2 | Pengingat TIDAK dikirim bila tidak ada tugas jatuh tempo. Email kosong lebih merugikan daripada tidak ada email. |
-| A7.3 | Setiap email WAJIB punya tautan berhenti berlangganan yang berfungsi tanpa login. |
-| A7.4 | Email transaksional (aktivasi, ganti password) TIDAK dapat dinonaktifkan. |
-| A7.5 | Push notification TIDAK ada di v1. |
-
----
+| A7.1 | MVP tidak mengirim email apa pun selain reset password. |
+| A7.2 | Bila pengingat mingguan jadi dibuat: maksimum **1 email per minggu**, dan TIDAK dikirim bila tidak ada tugas jatuh tempo. Email kosong lebih merugikan daripada tidak ada email. |
+| A7.3 | Push notification TIDAK ada. |
 
 ## Bagian B — Aturan Rekayasa (Engineering Rules)
 
@@ -113,7 +111,7 @@ salah satunya bug — perbaiki, jangan diamkan.
 | # | Aturan |
 |---|---|
 | B1.1 | TypeScript `strict: true`. `any` dilarang; gunakan `unknown` + penyempitan tipe. |
-| B1.2 | Setiap input eksternal (form, query param, payload webhook, baris CSV) HARUS divalidasi dengan Zod di batas sistem. |
+| B1.2 | Setiap input eksternal (form, query param, baris CSV import, jawaban RSVP dari tamu) HARUS divalidasi dengan Zod di batas sistem. |
 | B1.3 | Tipe database dihasilkan otomatis dari skema (`types/database.ts`) dan TIDAK BOLEH diedit manual. |
 | B1.4 | Tidak ada nilai ajaib. Konstanta domain (batas anggota, panjang token, ambang peringatan) hidup di `lib/constants.ts`. |
 | B1.5 | Komentar menjelaskan **kenapa**, bukan **apa**. Kode yang butuh komentar "apa" biasanya perlu diberi nama lebih baik. |
@@ -124,7 +122,7 @@ salah satunya bug — perbaiki, jangan diamkan.
 | # | Aturan |
 |---|---|
 | B2.1 | Komponen klien TIDAK BOLEH mengambil data domain langsung dari Supabase. Baca lewat Server Component, tulis lewat Server Action. |
-| B2.2 | `supabaseAdmin` (service role) hanya boleh diimpor dari `app/api/webhooks/*`, `app/api/cron/*`, dan `app/admin/*`. Ditegakkan lewat ESLint `no-restricted-imports`. |
+| B2.2 | Service role TIDAK dipakai di MVP — seluruh akses lewat JWT pengguna sehingga RLS selalu aktif. Bila nanti dibutuhkan, impornya dibatasi ke berkas itu saja lewat ESLint `no-restricted-imports`. |
 | B2.3 | Setiap Server Action HARUS diawali `requireWedding()` (atau `requireSession()` untuk aksi tingkat akun) sebelum menyentuh data. |
 | B2.4 | Setiap kueri terhadap tabel domain HARUS menyertakan `.eq('wedding_id', weddingId)` secara eksplisit, meskipun RLS sudah aktif. Pertahanan berlapis. |
 | B2.5 | Logika bisnis murni tinggal di `features/*/lib.ts` tanpa impor React atau Supabase, agar dapat diuji tanpa mock. |
@@ -149,13 +147,13 @@ salah satunya bug — perbaiki, jangan diamkan.
 
 | # | Aturan |
 |---|---|
-| B4.1 | Rahasia tidak pernah masuk repositori. `SUPABASE_SERVICE_ROLE_KEY` TIDAK BOLEH punya prefiks `NEXT_PUBLIC_`. |
-| B4.2 | Webhook HARUS memverifikasi HMAC dengan perbandingan waktu-konstan dan menolak timestamp lebih tua dari 5 menit. |
-| B4.3 | Payload webhook mentah disimpan sebelum diproses, untuk keperluan replay dan audit. |
-| B4.4 | Nomor HP, email, dan nama tamu TIDAK BOLEH muncul di log, Sentry, atau properti event analitik. |
+| B4.1 | Rahasia tidak pernah masuk repositori. `SUPABASE_SERVICE_ROLE_KEY` TIDAK BOLEH punya prefiks `NEXT_PUBLIC_` — dan MVP ini tidak membutuhkannya sama sekali. |
+| B4.2 | Pendaftaran mandiri HARUS dimatikan di Supabase Auth (aturan A1.2). |
+| B4.3 | Halaman RSVP publik HANYA boleh mengakses data lewat `get_rsvp_context` / `submit_rsvp`. Menambah kolom ke kedua RPC itu WAJIB disertai asersi kebocoran di `tests/rls/isolation.sql`. |
+| B4.4 | Nomor HP, email, dan nama tamu TIDAK BOLEH muncul di log runtime, pesan error, maupun URL. |
 | B4.5 | `dangerouslySetInnerHTML` dilarang di seluruh basis kode. |
 | B4.6 | Unggahan dibatasi tipe MIME dan ukuran, disimpan di bucket privat, diakses lewat signed URL berumur ≤ 60 menit. |
-| B4.7 | Rate limit wajib pada: login, kirim ulang aktivasi, submit RSVP, dan endpoint import. |
+| B4.7 | Rate limit wajib pada submit RSVP (10/menit/IP), karena itu satu-satunya endpoint yang terbuka untuk publik. |
 | B4.8 | Setiap PR yang menyentuh RLS atau autentikasi WAJIB menyertakan tes isolasi data. |
 
 ### B5. Pengujian
@@ -164,7 +162,7 @@ salah satunya bug — perbaiki, jangan diamkan.
 |---|---|
 | B5.1 | Logika murni (perhitungan countdown, agregasi anggaran, normalisasi nomor, render template WA) WAJIB punya unit test. |
 | B5.2 | Tes RLS WAJIB membuktikan: pengguna A tidak dapat membaca **maupun menulis** baris milik pernikahan B, untuk setiap tabel domain. |
-| B5.3 | Alur E2E wajib: aktivasi → onboarding → tambah tamu → kirim WA (link ter-generate) → submit RSVP → statistik beranda berubah. |
+| B5.3 | Alur E2E wajib: login → onboarding → tambah tamu → kirim WA (tautan ter-generate benar) → submit RSVP → statistik beranda berubah. |
 | B5.4 | Perbaikan bug WAJIB disertai tes yang gagal sebelum perbaikan. |
 | B5.5 | Tidak ada patokan cakupan tes berupa angka; yang diwajibkan adalah B5.1–B5.4. |
 
@@ -185,8 +183,8 @@ salah satunya bug — perbaiki, jangan diamkan.
 |---|---|
 | B7.1 | Branch: `feat/…`, `fix/…`, `chore/…`, `docs/…`. |
 | B7.2 | Pesan commit memakai Conventional Commits berbahasa Inggris (`feat(guests): add csv import`). |
-| B7.3 | PR wajib menyertakan: apa yang berubah, kenapa, cara menguji, dan tangkapan layar untuk perubahan UI. |
-| B7.4 | Merge ke `main` hanya bila CI hijau (typecheck, lint, unit, RLS, build, E2E). |
+| B7.3 | Commit menjelaskan apa yang berubah dan kenapa. Untuk perubahan UI, sertakan tangkapan layar di PR bila memakai PR. |
+| B7.4 | Merge ke `main` hanya bila typecheck, lint, unit test, dan `./tests/rls/run.sh` lulus. |
 | B7.5 | Migrasi database dan kode yang membutuhkannya HARUS berada dalam PR yang sama. |
 | B7.6 | Dokumen di `docs/` HARUS ikut diperbarui dalam PR yang mengubah perilaku yang didokumentasikan. |
 
@@ -216,7 +214,7 @@ Sebuah fitur dianggap selesai bila **seluruh** poin terpenuhi:
 4. Kebijakan RLS ada dan diuji untuk tabel baru mana pun.
 5. Angka uang memakai integer dan diformat lewat `lib/format`.
 6. Teks berbahasa Indonesia dan sesuai Bagian C.
-7. Event analitik yang relevan sudah dikirim.
-8. Unit test untuk logika murni sudah ada.
-9. `docs/` diperbarui bila perilaku yang didokumentasikan berubah.
-10. Tidak ada PII di log.
+7. Unit test untuk logika murni sudah ada.
+8. `docs/` diperbarui bila perilaku yang didokumentasikan berubah.
+9. Tidak ada PII (nomor HP, nama tamu) di log.
+10. Bisa dipakai dengan satu tangan di HP — aksi utama berada dalam jangkauan jempol.

@@ -1,6 +1,9 @@
 -- =============================================================================
 -- Tes isolasi data & alur fungsional (aturan B5.2, B5.3)
 --
+-- Skema ini dipakai berdua saja, tetapi RLS tetap wajib: anon key Supabase
+-- ada di dalam browser, jadi database harus menolak akses dengan sendirinya.
+--
 -- Membuktikan: pengguna pernikahan A tidak dapat MEMBACA maupun MENULIS baris
 -- milik pernikahan B, dan alur inti (seed → tamu → RSVP publik → statistik)
 -- bekerja apa adanya.
@@ -35,22 +38,6 @@ insert into auth.users (id, email) values
 do $$ begin perform pg_temp.assert(
   (select count(*) from public.profiles) = 2,
   'trigger on_auth_user_created membuat profil untuk tiap user auth'); end $$;
-
--- Entitlement dibuat lebih dulu oleh webhook, lalu ditautkan saat user muncul.
-insert into public.entitlements (email, provider, external_order_id, product_code, amount)
-values ('agus@example.com', 'lynk', 'ORDER-001', 'basic', 29000);
-
--- Idempotensi webhook (aturan A1.6): order id sama tidak boleh menggandakan hak.
-do $$
-begin
-  begin
-    insert into public.entitlements (email, provider, external_order_id, product_code, amount)
-    values ('agus@example.com', 'lynk', 'ORDER-001', 'basic', 29000);
-    perform pg_temp.assert(false, 'order duplikat seharusnya ditolak');
-  exception when unique_violation then
-    perform pg_temp.assert(true, 'A1.6 order duplikat ditolak unique constraint');
-  end;
-end $$;
 
 -- -----------------------------------------------------------------------------
 -- PENGGUNA A membangun pernikahannya
@@ -311,9 +298,6 @@ begin
     (select count(*) from public.wedding_dashboard_stats) = 0,
     'B5.2 BACA: view dashboard tidak membocorkan pernikahan lain');
   perform pg_temp.assert(
-    (select count(*) from public.entitlements) = 0,
-    'A1.x entitlement pengguna lain tidak terlihat');
-  perform pg_temp.assert(
     (select count(*) from public.profiles) = 1,
     'profil pengguna lain tidak terlihat');
 end $$;
@@ -364,20 +348,21 @@ begin
     perform pg_temp.assert(true, 'B5.2 seed_wedding_defaults menolak non-anggota');
   end;
 
-  -- Katalog & template read-only bagi pengguna (aturan A6.2).
+  -- Template read-only bagi pengguna (aturan A6.2): ia bahan seeding,
+  -- bukan data harian yang boleh diubah dari aplikasi.
   begin
-    insert into public.product_catalog (name, category) values ('Produk Palsu', 'Skincare');
-    perform pg_temp.assert(false, 'menulis katalog produk seharusnya ditolak');
+    insert into public.template_seserahan_items (category, name)
+    values ('Skincare', 'Item Selundupan');
+    perform pg_temp.assert(false, 'menulis tabel template seharusnya ditolak');
   exception when insufficient_privilege then
-    perform pg_temp.assert(true, 'A6.2 katalog produk read-only bagi pengguna');
+    perform pg_temp.assert(true, 'A6.2 tabel template read-only bagi pengguna');
   end;
 
-  -- Log webhook tidak boleh terbaca pengguna (aturan B4.3).
   begin
-    perform count(*) from public.webhook_events;
-    perform pg_temp.assert(false, 'membaca webhook_events seharusnya ditolak');
+    update public.template_budget_categories set default_share_percent = 99;
+    perform pg_temp.assert(false, 'mengubah tabel template seharusnya ditolak');
   exception when insufficient_privilege then
-    perform pg_temp.assert(true, 'B4.3 webhook_events hanya untuk service role');
+    perform pg_temp.assert(true, 'A6.2 tabel template tidak bisa diubah pengguna');
   end;
 end $$;
 

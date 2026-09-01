@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Versi | 1.0 |
+| Versi | 2.0 — pemakaian pribadi |
 | Database | PostgreSQL 15 (Supabase) |
 | DDL kanonik | `db/schema.sql` |
 | Konvensi | `snake_case`, tabel jamak, PK `id uuid`, uang `bigint` rupiah, waktu `timestamptz` |
@@ -12,29 +12,28 @@
 ## 1. Peta Relasi
 
 ```
-auth.users (Supabase)
+auth.users (Supabase)          2 akun, dibuat manual lewat dashboard
     │ 1:1
     ▼
-profiles                          entitlements ──── webhook_events
-    │ 1:n                              │ (per user)
-    ▼                                  │
-wedding_members ──n:1──► weddings ◄────┘
+profiles
+    │ 1:n
+    ▼
+wedding_members ──n:1──► weddings
                              │
       ┌──────────────┬───────┼────────────┬──────────────┬──────────────┐
       ▼              ▼       ▼            ▼              ▼              ▼
    events   checklist_    budget_    guest_groups   seserahan_     milestones
             categories   categories       │           items             │
-                 │            │           │             │              │
-                 ▼            ▼           ▼             │              │
-          checklist_     expenses ──► vendors        (ref)             │
-             items                                       ▼             │
-                                     guests ──► rsvp_responses    wedding_settings
-                                        │
-                                        └──► wishes
+                 │            │           │                             │
+                 ▼            ▼           ▼                             ▼
+          checklist_     expenses ──► vendors                    wedding_settings
+             items                       │
+                                      guests ──┬─► rsvp_responses
+                                               └─► wishes
 
-Tabel global (tanpa wedding_id, read-only bagi pengguna):
-  template_checklist_items · template_budget_categories · template_seserahan_items
-  product_catalog · activity_log (admin)
+Tabel global (tanpa wedding_id, read-only bagi aplikasi):
+  template_checklist_categories · template_checklist_items
+  template_budget_categories · template_seserahan_items
 ```
 
 ---
@@ -44,7 +43,6 @@ Tabel global (tanpa wedding_id, read-only bagi pengguna):
 | Enum | Nilai |
 |---|---|
 | `member_role` | `owner`, `partner`, `viewer` |
-| `entitlement_status` | `active`, `revoked`, `expired` |
 | `event_type` | `akad`, `resepsi`, `lamaran`, `siraman`, `midodareni`, `ngunduh_mantu`, `pengajian`, `lainnya` |
 | `task_priority` | `low`, `normal`, `high` |
 | `assignee` | `groom`, `bride`, `both` |
@@ -68,33 +66,14 @@ Perluasan `auth.users`. Dibuat otomatis oleh trigger `on_auth_user_created`.
 | Kolom | Tipe | Keterangan |
 |---|---|---|
 | `id` | `uuid` PK | = `auth.users.id`, `ON DELETE CASCADE` |
-| `email` | `text` | disalin dari auth, untuk pencarian admin |
+| `email` | `text` | disalin dari auth saat akun dibuat |
 | `full_name` | `text` | |
 | `phone` | `text` | |
 | `avatar_url` | `text` | |
 | `active_wedding_id` | `uuid` | pernikahan yang sedang dibuka |
 | `created_at` / `updated_at` | `timestamptz` | |
 
-### 3.2 `entitlements`
-Hak akses hasil pembelian. Sumber kebenaran untuk "boleh pakai aplikasi".
-
-| Kolom | Tipe | Keterangan |
-|---|---|---|
-| `id` | `uuid` PK | |
-| `user_id` | `uuid` → `profiles` | boleh `null` bila email belum punya akun |
-| `email` | `text` NOT NULL | email pembelian, lowercase |
-| `provider` | `text` NOT NULL | `lynk`, `mayar`, `manual` |
-| `external_order_id` | `text` NOT NULL | id order marketplace |
-| `product_code` | `text` NOT NULL | `basic`, `plus` |
-| `amount` | `bigint` | nominal transaksi, rupiah |
-| `status` | `entitlement_status` | default `active` |
-| `purchased_at` | `timestamptz` | |
-| `activated_at` | `timestamptz` | saat password dibuat |
-| `revoked_at` / `revoke_reason` | `timestamptz` / `text` | refund, chargeback |
-
-**Unik:** `(provider, external_order_id)` → idempotensi webhook (A1.6).
-
-### 3.3 `weddings`
+### 3.2 `weddings`
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|
@@ -112,7 +91,7 @@ Hak akses hasil pembelian. Sumber kebenaran untuk "boleh pakai aplikasi".
 | `onboarding_completed_at` | `timestamptz` | `null` = belum onboarding |
 | `deleted_at` | `timestamptz` | soft delete 30 hari |
 
-### 3.4 `wedding_members`
+### 3.3 `wedding_members`
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|
@@ -125,7 +104,7 @@ Hak akses hasil pembelian. Sumber kebenaran untuk "boleh pakai aplikasi".
 **Unik:** `(wedding_id, user_id)` dan `(wedding_id, invited_email)`.
 Tabel ini adalah **poros seluruh kebijakan RLS**.
 
-### 3.5 `events`
+### 3.4 `events`
 Mendukung pernikahan adat berbilang acara (A2.2, jalur evolusi v1.2).
 
 | Kolom | Tipe | Keterangan |
@@ -273,13 +252,8 @@ Buku ucapan. `wedding_id`, `guest_id` (nullable), `display_name`, `message` (≤
 | `is_purchased` | `boolean` | |
 | `purchased_at` | `timestamptz` | |
 | `tray_number` | `int` | hantaran ke-N (F5.6) |
-| `product_id` | `uuid` → `product_catalog` `ON DELETE SET NULL` | |
+| `product_url` | `text` | tautan toko, ditempel sendiri (aturan A6.3) |
 | `expense_id` | `uuid` → `expenses` `ON DELETE SET NULL` | tautan ke anggaran (A6.4) |
-
-### 7.2 `product_catalog` (global, read-only)
-
-`name`, `category`, `brand`, `image_url`, `price_min`, `price_max`, `marketplace`,
-`product_url`, `is_affiliate`, `is_active`, `updated_at`.
 
 ---
 
@@ -289,9 +263,6 @@ Buku ucapan. `wedding_id`, `guest_id` (nullable), `display_name`, `message` (≤
 |---|---|
 | `milestones` | `wedding_id`, `title`, `target_date`, `is_done` — kartu milestone di beranda |
 | `wedding_settings` | 1:1 dengan `weddings`: `whatsapp_template`, `reminder_email_enabled`, `show_wishes_publicly` |
-| `notifications` | `user_id`, `wedding_id`, `type`, `title`, `body`, `read_at` — notifikasi in-app |
-| `webhook_events` | `provider`, `event_type`, `payload jsonb`, `signature_valid`, `processed_at`, `error` |
-| `activity_log` | `actor_id`, `wedding_id`, `action`, `target_table`, `target_id`, `metadata jsonb` |
 | `template_checklist_items` | `category_name`, `title`, `days_before_wedding`, `priority`, `sort_order` |
 | `template_budget_categories` | `name`, `icon`, `default_share_percent` |
 | `template_seserahan_items` | `category`, `name`, `estimated_price`, `sort_order` |
@@ -355,9 +326,7 @@ Fungsi bantu (`stable`, `security definer`, `search_path = public, pg_temp`):
 |---|---|
 | `weddings` | select/update untuk anggota; delete hanya `owner` |
 | `wedding_members` | select untuk sesama anggota; insert/delete hanya `owner` |
-| `entitlements` | select hanya `user_id = auth.uid()`; tulis hanya service role |
-| `webhook_events`, `activity_log` | tidak ada akses bagi pengguna; service role saja |
-| Tabel `template_*`, `product_catalog` | select untuk semua pengguna terautentikasi; tulis service role saja |
+| Tabel `template_*` | select untuk pengguna terautentikasi; insert/update/delete dicabut lewat GRANT (aturan A6.2) |
 | `guests`, `rsvp_responses` | akses publik **tidak** lewat kebijakan tabel, melainkan lewat dua RPC `SECURITY DEFINER` (§11) |
 
 ---
@@ -385,7 +354,7 @@ Keduanya `security definer` dengan `search_path` terkunci, diberikan `execute` k
 
 | Trigger | Fungsi |
 |---|---|
-| `on_auth_user_created` | Membuat baris `profiles` dan menautkan `entitlements` yang cocok berdasarkan email |
+| `on_auth_user_created` | Membuat baris `profiles` setiap kali akun auth dibuat |
 | `set_updated_at` | Memperbarui `updated_at` pada setiap `UPDATE` (dipasang di semua tabel) |
 | `guests_set_token` | Mengisi `rsvp_token` dengan 32 karakter acak saat insert |
 | `checklist_set_completed_at` | Mengisi/mengosongkan `completed_at` saat `is_done` berubah |
@@ -402,7 +371,6 @@ Keduanya `security definer` dengan `search_path` terkunci, diberikan `execute` k
 | Item checklist | 49 item dengan `days_before_wedding` | idem |
 | Kategori anggaran | 11 kategori, porsi default menjumlah 100% | `db/seeds/02_budget.sql` |
 | Item seserahan | 32 item dalam 9 kategori | `db/seeds/03_seserahan.sql` |
-| Katalog produk | dikurasi manual lewat panel admin | — |
 
 Seeding pengguna dijalankan oleh RPC `public.seed_wedding_defaults(p_wedding_id uuid)`
 yang dipanggil satu kali di akhir onboarding, bersifat idempoten (tidak melakukan apa pun
@@ -415,7 +383,5 @@ bila pernikahan sudah punya item).
 | Data | Retensi |
 |---|---|
 | Baris dengan `deleted_at` | Dihapus permanen 30 hari setelahnya oleh cron |
-| `webhook_events` | 90 hari |
-| `activity_log` | 12 bulan |
 | Pernikahan pascaacara | Aktif 12 bulan setelah hari-H → arsip read-only → hapus di bulan ke-24 dengan 2 kali pemberitahuan email |
-| Permintaan hapus akun | Diproses ≤ 7 hari, mencakup Storage |
+| Nomor HP tamu | Dihapus bersama pernikahan. Tidak pernah dibagikan ke layanan lain |
