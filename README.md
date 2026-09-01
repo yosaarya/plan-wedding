@@ -7,8 +7,9 @@ undangan lewat WhatsApp, dan checklist seserahan.
 Dipakai berdua saja — dua akun, satu data pernikahan, bisa dibuka dari HP kapan saja.
 Tidak ada sistem penjualan, langganan, atau panel admin.
 
-> **Status:** fondasi jalan (T0). Login, guard sesi, onboarding + seeding, dan beranda
-> sudah ada. Modul tamu, checklist, anggaran, dan seserahan belum.
+> **Status:** T0 dan T1 selesai. Login, onboarding + seeding, beranda, modul tamu
+> (daftar, pencarian, filter, import, tombol WhatsApp), dan halaman RSVP publik sudah
+> jalan. Checklist, anggaran, seserahan, dan profil belum.
 
 ---
 
@@ -129,11 +130,15 @@ Dipilih supaya bagian yang paling melelahkan kalau manual selesai lebih dulu.
 
 | Tahap | Isi |
 |---|---|
-| T0 | Fondasi: login, guard sesi, onboarding, seeding — *skema & tes sudah selesai* |
-| T1 | Tamu & undangan: daftar, grup, filter, import, deep link WA, halaman RSVP publik |
+| ~~T0~~ | ~~Fondasi: login, guard sesi, onboarding, seeding~~ — selesai |
+| ~~T1~~ | ~~Tamu & undangan: daftar, filter, import, deep link WA, halaman RSVP publik~~ — selesai |
 | T2 | Checklist & anggaran |
-| T3 | Beranda: countdown, tugas bulan ini, ringkasan |
+| T3 | Beranda: melengkapi daftar tugas & milestone (kartu ringkasannya sudah ada) |
 | T4 | Seserahan, profil, PWA/A2HS, ekspor data |
+
+Belum dikerjakan dari T1: ubah & hapus tamu dari UI, kelola grup, ekspor CSV, dan
+mode kirim beruntun. Aksinya sudah ada di `features/guests/actions.ts`, tinggal
+halamannya.
 
 Tiap tahap berdiri sendiri dan langsung berguna, jadi berhenti di tahap mana pun tetap
 menyisakan sesuatu yang terpakai.
