@@ -1,4 +1,4 @@
-import type { Guest, InvitationStatus, RsvpStatus } from '@/types/database'
+import type { Guest, InvitationStatus, PartySide, RsvpStatus } from '@/types/database'
 
 /**
  * Logika murni modul tamu — tanpa React, tanpa Supabase, sehingga bisa diuji
@@ -83,4 +83,53 @@ export function parseDaftarTempel(text: string): BarisImport[] {
       return { name: line, headcount: 1 }
     })
     .filter((row) => row.name.length > 0)
+}
+
+// ---------------------------------------------------------------------------
+// Pembersihan input dari URL
+//
+// Nilai filter datang dari query string, jadi siapa pun bisa mengetiknya
+// sembarangan. Tanpa penjagaan ini, `?rsvp=xxx` membuat Postgres menolak cast
+// ke enum dan seluruh halaman ikut gagal (aturan B1.2).
+// ---------------------------------------------------------------------------
+
+const RSVP_STATUSES: RsvpStatus[] = ['pending', 'attending', 'not_attending', 'maybe']
+const INVITATION_STATUSES: InvitationStatus[] = ['not_sent', 'sent', 'opened']
+const PARTY_SIDES: PartySide[] = ['groom', 'bride', 'both']
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export function asRsvpStatus(value: unknown): RsvpStatus | undefined {
+  return RSVP_STATUSES.find((s) => s === value)
+}
+
+export function asInvitationStatus(value: unknown): InvitationStatus | undefined {
+  return INVITATION_STATUSES.find((s) => s === value)
+}
+
+export function asPartySide(value: unknown): PartySide | undefined {
+  return PARTY_SIDES.find((s) => s === value)
+}
+
+export function asUuid(value: unknown): string | undefined {
+  return typeof value === 'string' && UUID_PATTERN.test(value) ? value : undefined
+}
+
+/**
+ * Membersihkan kata pencarian sebelum dimasukkan ke filter `or=` PostgREST.
+ *
+ * Koma, titik, dan kurung adalah bagian dari sintaks filter itu sendiri, dan
+ * `%` serta `_` adalah wildcard `ilike`. Kalau dibiarkan, nama yang wajar
+ * seperti "Ahmad, S.Pd" atau "Budi (kantor)" akan merusak susunan filternya.
+ *
+ * Ini BUKAN perlindungan dari SQL injection — nilainya tetap dikirim sebagai
+ * parameter, dan RLS beserta filter wedding_id yang membatasi jangkauannya.
+ * Ini menjaga agar kueri tetap terbentuk benar.
+ */
+export function sanitasiPencarian(input: string): string {
+  return input
+    .replace(/[%_,.()*\\"':]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80)
 }

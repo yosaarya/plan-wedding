@@ -1,14 +1,26 @@
 import 'server-only'
 import { requireWedding } from '@/lib/auth/guards'
 import { PAGE_SIZE } from '@/lib/constants'
-import type { Guest, GuestGroup, InvitationStatus, PartySide, RsvpStatus, WeddingSettings } from '@/types/database'
+import {
+  asInvitationStatus,
+  asPartySide,
+  asRsvpStatus,
+  asUuid,
+  sanitasiPencarian,
+} from './lib'
+import type { Guest, GuestGroup, WeddingSettings } from '@/types/database'
 
+/**
+ * Nilainya datang langsung dari query string, jadi sengaja bertipe longgar:
+ * pembersihannya dilakukan di dalam `listGuests` supaya tidak ada pemanggil
+ * yang bisa melewatinya.
+ */
 export type GuestFilter = {
   q?: string
-  rsvp?: RsvpStatus
-  kirim?: InvitationStatus
+  rsvp?: string
+  kirim?: string
   grup?: string
-  pihak?: PartySide
+  pihak?: string
   page?: number
 }
 
@@ -34,15 +46,22 @@ export async function listGuests(filter: GuestFilter = {}): Promise<GuestPage> {
     .eq('wedding_id', weddingId)
     .is('deleted_at', null)
 
-  if (filter.q) {
-    // Pencarian nama memakai indeks trigram; nomor dicocokkan sebagai awalan.
-    const term = filter.q.replace(/[%,]/g, ' ').trim()
-    if (term) query = query.or(`name.ilike.%${term}%,phone.ilike.%${term}%`)
+  // Filter yang tidak dikenali diabaikan, bukan diteruskan ke database:
+  // nilai enum atau UUID yang ngawur akan membuat seluruh halaman gagal.
+  const term = filter.q ? sanitasiPencarian(filter.q) : ''
+  const rsvp = asRsvpStatus(filter.rsvp)
+  const kirim = asInvitationStatus(filter.kirim)
+  const grup = asUuid(filter.grup)
+  const pihak = asPartySide(filter.pihak)
+
+  if (term) {
+    // Pencarian nama memakai indeks trigram; nomor dicocokkan sebagai bagian.
+    query = query.or(`name.ilike.%${term}%,phone.ilike.%${term}%`)
   }
-  if (filter.rsvp) query = query.eq('rsvp_status', filter.rsvp)
-  if (filter.kirim) query = query.eq('invitation_status', filter.kirim)
-  if (filter.grup) query = query.eq('group_id', filter.grup)
-  if (filter.pihak) query = query.eq('side', filter.pihak)
+  if (rsvp) query = query.eq('rsvp_status', rsvp)
+  if (kirim) query = query.eq('invitation_status', kirim)
+  if (grup) query = query.eq('group_id', grup)
+  if (pihak) query = query.eq('side', pihak)
 
   const { data, error, count } = await query
     .order('name', { ascending: true })

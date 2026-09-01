@@ -3,7 +3,6 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { StatTile } from '@/components/ui/stat-tile'
 import { listGuestGroups, listGuests, getWeddingSettings } from '@/features/guests/queries'
 import { getDashboardStats, getPrimaryEvent, getWedding } from '@/features/wedding/queries'
-import type { InvitationStatus, PartySide, RsvpStatus } from '@/types/database'
 import { FilterChips, type Chip } from './filter-chips'
 import { GuestRow } from './guest-row'
 import { SearchBox } from './search-box'
@@ -27,10 +26,10 @@ export default async function TamuPage({ searchParams }: { searchParams: SearchP
     getWeddingSettings(),
     listGuests({
       q: one('q'),
-      rsvp: one('rsvp') as RsvpStatus | undefined,
-      kirim: one('kirim') as InvitationStatus | undefined,
+      rsvp: one('rsvp'),
+      kirim: one('kirim'),
       grup: one('grup'),
-      pihak: one('pihak') as PartySide | undefined,
+      pihak: one('pihak'),
       page: Number(one('page') ?? 1) || 1,
     }),
   ])

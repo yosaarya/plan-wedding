@@ -111,7 +111,8 @@ langsung dari komentar di `db/schema.sql` dan `tests/rls/isolation.sql`.
 | # | Aturan |
 |---|---|
 | B1.1 | TypeScript `strict: true`. `any` dilarang; gunakan `unknown` + penyempitan tipe. |
-| B1.2 | Setiap input eksternal (form, query param, baris CSV import, jawaban RSVP dari tamu) HARUS divalidasi dengan Zod di batas sistem. |
+| B1.2 | Setiap input eksternal (form, query param, baris CSV import, jawaban RSVP dari tamu) HARUS divalidasi di batas sistem — Zod untuk form dan payload, penjaga bertipe untuk query param. |
+| B1.7 | Filter yang datang dari query string HARUS divalidasi **di lapisan kueri**, bukan hanya di halaman, supaya tidak ada pemanggil yang bisa melewatinya. Nilai yang tidak dikenali diabaikan, tidak diteruskan ke database: nilai enum atau UUID yang ngawur membuat Postgres menolak dan seluruh halaman gagal dimuat. |
 | B1.3 | Tipe database dihasilkan otomatis dari skema (`types/database.ts`) dan TIDAK BOLEH diedit manual. |
 | B1.4 | Tidak ada nilai ajaib. Konstanta domain (batas anggota, panjang token, ambang peringatan) hidup di `lib/constants.ts`. |
 | B1.5 | Komentar menjelaskan **kenapa**, bukan **apa**. Kode yang butuh komentar "apa" biasanya perlu diberi nama lebih baik. |

@@ -364,6 +364,7 @@ ada di dalam browser**, dan **kami menyimpan nomor HP ratusan orang lain**.
 | Rate limit | Submit RSVP 10/menit per tamu, ditegakkan di dalam fungsi `submit_rsvp` sehingga tidak bergantung pada instance edge; login memakai batas bawaan Supabase |
 | Unggahan | Hanya `image/jpeg|png|webp`, maksimum 5 MB, bucket privat, diakses lewat signed URL ≤ 60 menit |
 | XSS | Tidak ada `dangerouslySetInnerHTML`; ucapan tamu di-render sebagai teks biasa |
+| Input dari URL | Filter query string divalidasi di lapisan kueri (`features/guests/lib.ts`), bukan hanya di halaman. Kata pencarian dibersihkan dari karakter sintaks PostgREST sebelum masuk filter `or=` |
 | Header | CSP, HSTS, `X-Content-Type-Options`, `Referrer-Policy: strict-origin-when-cross-origin` |
 | PII | Nomor HP dan nama tamu tidak pernah masuk log atau pesan error |
 
