@@ -4,14 +4,23 @@ import { ProgressBar } from '@/components/ui/progress-bar'
 import { StatTile } from '@/components/ui/stat-tile'
 import { formatRupiah, formatRupiahShort } from '@/lib/format/currency'
 import { formatTanggalPanjang, teksCountdown } from '@/lib/format/date'
+import { listChecklistItems } from '@/features/checklist/queries'
+import { terlambat, tugasBulanIni } from '@/features/checklist/lib'
 import { getDashboardStats, getPrimaryEvent, getWedding } from '@/features/wedding/queries'
+import { HOME_TASK_LIMIT } from '@/lib/constants'
+import { formatTanggalPendek } from '@/lib/format/date'
 
 export default async function BerandaPage() {
-  const [wedding, event, stats] = await Promise.all([
+  const [wedding, event, stats, items] = await Promise.all([
     getWedding(),
     getPrimaryEvent(),
     getDashboardStats(),
+    listChecklistItems(),
   ])
+
+  const today = new Date()
+  // Tenggat bulan ini ditambah seluruh yang terlambat, maksimal lima (aturan A3.5).
+  const tugas = tugasBulanIni(items, today, HOME_TASK_LIMIT)
 
   const days = stats.days_until_primary_event
   const budgetPercent =
@@ -75,7 +84,34 @@ export default async function BerandaPage() {
             </span>
           ) : null}
         </p>
-        <div className="mt-3">
+
+        {tugas.length > 0 ? (
+          <ul className="mt-3 space-y-2">
+            {tugas.map((item) => {
+              const late = terlambat(item, today)
+              return (
+                <li key={item.id} className="flex items-baseline justify-between gap-3">
+                  <span className="truncate text-sm text-ink-900">{item.title}</span>
+                  {item.due_date ? (
+                    <span
+                      className={`tabular shrink-0 text-xs ${
+                        late ? 'font-semibold text-[var(--color-danger)]' : 'text-ink-500'
+                      }`}
+                    >
+                      {formatTanggalPendek(item.due_date)}
+                    </span>
+                  ) : null}
+                </li>
+              )
+            })}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm text-ink-500">
+            Tidak ada yang jatuh tempo bulan ini. Santai dulu.
+          </p>
+        )}
+
+        <div className="mt-4">
           <ProgressBar
             percent={
               stats.checklist_total > 0

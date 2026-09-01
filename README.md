@@ -7,9 +7,9 @@ undangan lewat WhatsApp, dan checklist seserahan.
 Dipakai berdua saja — dua akun, satu data pernikahan, bisa dibuka dari HP kapan saja.
 Tidak ada sistem penjualan, langganan, atau panel admin.
 
-> **Status:** T0 dan T1 selesai. Login, onboarding + seeding, beranda, modul tamu
-> (daftar, pencarian, filter, import, ubah/hapus, grup, ekspor CSV, tombol WhatsApp),
-> dan halaman RSVP publik sudah jalan. Checklist, anggaran, seserahan, dan profil belum.
+> **Status:** T0–T3 selesai. Login, onboarding + seeding, beranda, modul tamu (daftar,
+> pencarian, filter, import, ubah/hapus, grup, ekspor CSV, tombol WhatsApp), halaman
+> RSVP publik, checklist, dan anggaran sudah jalan. Seserahan dan profil belum.
 
 ---
 
@@ -132,12 +132,13 @@ Dipilih supaya bagian yang paling melelahkan kalau manual selesai lebih dulu.
 |---|---|
 | ~~T0~~ | ~~Fondasi: login, guard sesi, onboarding, seeding~~ — selesai |
 | ~~T1~~ | ~~Tamu & undangan: daftar, filter, import, deep link WA, halaman RSVP publik~~ — selesai |
-| T2 | Checklist & anggaran |
-| T3 | Beranda: melengkapi daftar tugas & milestone (kartu ringkasannya sudah ada) |
+| ~~T2~~ | ~~Checklist & anggaran~~ — selesai |
+| ~~T3~~ | ~~Beranda: countdown, tugas bulan ini, ringkasan~~ — selesai |
 | T4 | Seserahan, profil, PWA/A2HS, ekspor data |
 
-Belum dikerjakan dari T1: mode kirim beruntun (buka WhatsApp satu per satu dengan
-penanda posisi terakhir).
+Belum dikerjakan: modul seserahan, halaman profil (ubah data pernikahan, template
+pesan WhatsApp, URL undangan), ikon PWA, mode kirim beruntun, dan ubah/hapus
+pengeluaran dari UI. Kartu milestone di beranda juga belum.
 
 Tiap tahap berdiri sendiri dan langsung berguna, jadi berhenti di tahap mana pun tetap
 menyisakan sesuatu yang terpakai.
