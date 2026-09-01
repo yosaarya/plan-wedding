@@ -24,7 +24,3 @@ export const budgetCategorySchema = z.object({
   name: z.string().trim().min(1, 'Nama kategori belum diisi').max(80),
   plannedAmount: rupiah.default(0),
 })
-
-export const totalBudgetSchema = z.object({
-  totalBudget: rupiah,
-})

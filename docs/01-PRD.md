@@ -5,8 +5,12 @@
 | Versi dokumen | 2.0 — pemakaian pribadi |
 | Tanggal | 2026-09-01 |
 | Pengguna | Dua orang: calon pengantin pria & wanita |
-| Status | Disetujui, siap dikerjakan |
+| Status | Disetujui. Status implementasi per kebutuhan ada di `docs/06-STATUS.md` |
 
+> **Dokumen ini adalah spesifikasi, bukan laporan.** Sebuah ID yang tercantum di sini
+> belum tentu sudah dikerjakan — `docs/06-STATUS.md` yang menyimpan keadaan sebenarnya,
+> dan itu yang harus dibaca lebih dulu sebelum menaksir "sudah sampai mana".
+>
 > **Perubahan dari v1.0.** Dokumen ini semula dirancang sebagai produk digital yang
 > dijual. Diputuskan aplikasi hanya dipakai sendiri, sehingga seluruh lapisan penjualan
 > dibuang: entitlement, webhook order marketplace, email aktivasi, halaman kirim-ulang,
@@ -100,7 +104,7 @@ Must jalan), **Could** (kalau sempat).
 | F0.2 | Login dengan email + password | Must |
 | F0.3 | Lupa password lewat magic link ke email | Must |
 | F0.4 | Halaman pendaftaran publik **ditutup** — tidak ada orang lain yang bisa bikin akun | Must |
-| F0.5 | Onboarding 4 langkah: nama pasangan → tanggal akad & resepsi → perkiraan jumlah tamu → total budget | Must |
+| F0.5 | Onboarding: nama pasangan, tanggal akad & resepsi, lokasi, perkiraan jumlah tamu, total budget. Satu halaman berisi tiga kelompok pertanyaan — untuk lima isian, satu halaman lebih cepat daripada empat layar berurutan | Must |
 | F0.6 | Setelah onboarding, checklist, kategori anggaran, dan daftar seserahan ter-seed otomatis dari template | Must |
 | F0.7 | Akun kedua ditautkan ke pernikahan yang sama sebagai `partner` | Must |
 | F0.8 | Prompt "Tambahkan ke Home Screen" (A2HS) | Should |
@@ -198,6 +202,8 @@ Modul terpenting: paling banyak datanya dan paling melelahkan kalau manual.
 
 ### 5.1 Pemakaian pertama
 
+Langkah lengkapnya, termasuk yang harus dikerjakan tangan, ada di `docs/07-RUNBOOK.md` §2.
+
 ```
 Akun dibuat sekali lewat dashboard Supabase (dua email)
   └─ Login → belum punya pernikahan → /onboarding
@@ -238,7 +244,7 @@ kalau ada, catat pengeluaran baru → tutup. Target: selesai di bawah satu menit
 |---|---|
 | Mobile-first | Dirancang untuk lebar 360–430 px; desktop cukup dipusatkan dengan max-width |
 | Performa | Ringan di 4G; centang checklist terasa instan (optimistic UI) |
-| Skala nyata | ~300–400 tamu, ~200 item checklist, ~100 pengeluaran. Kecil — tapi daftar tamu tetap dipaginasi supaya enak di HP |
+| Skala nyata | ~300–400 tamu, ~200 item checklist (49 dari template + tambahan sendiri), ~100 pengeluaran. Kecil — tapi daftar tamu tetap dipaginasi supaya enak di HP |
 | PWA | Bisa ditambahkan ke Home Screen; app shell ter-cache sehingga tetap terbuka saat sinyal jelek |
 | Keamanan | RLS tetap wajib meski hanya berdua: anon key Supabase ada di dalam browser, jadi database harus menolak akses dengan sendirinya. Halaman RSVP publik hanya boleh melihat satu baris tamu lewat token acak |
 | Privasi | Nomor HP ratusan tamu adalah data pribadi orang lain. Tidak masuk log; tidak dibagikan; dihapus setelah tidak diperlukan |
@@ -270,8 +276,9 @@ Skema database, seed, dan tes isolasi **sudah selesai dan lulus** — itu prasya
 
 | Risiko | Dampak | Mitigasi |
 |---|---|---|
-| Kehilangan data tamu | Tinggi — mengulang kerja berjam-jam | Backup harian Supabase, soft delete 30 hari, ekspor CSV mandiri |
-| Nomor HP tamu bocor | Tinggi — data pribadi orang lain | RLS, halaman RSVP publik lewat RPC yang tidak mengembalikan nomor HP, tidak ada PII di log |
+| Kehilangan data tamu | Tinggi — mengulang kerja berjam-jam | Soft delete 30 hari dan ekspor CSV mandiri. **Backup otomatis Supabase hanya ada di paket berbayar** — di paket gratis, ekspor mandiri adalah satu-satunya cadangan |
+| Nomor HP tamu bocor | Tinggi — data pribadi orang lain | RLS, halaman RSVP publik lewat RPC yang tidak mengembalikan nomor HP, tidak ada PII di log. Diuji di `tests/rls/isolation.sql` |
+| Pendaftaran mandiri lupa dimatikan di Supabase | Sedang | Tidak bisa dicegah kode. Langkahnya ditandai wajib di RUNBOOK §2 langkah 3, dan diulang di `docs/06-STATUS.md` |
 | Aplikasi belum jadi saat sudah butuh dipakai | Sedang | Urutan kerja mendahulukan modul tamu; sampai T1 selesai, spreadsheet tetap dipakai sebagai cadangan |
 | Kuota paket gratis terlampaui | Rendah | Skala data kecil; foto dibatasi ukurannya |
 | Ditinggal setengah jadi | Sedang | Tiap tahap berdiri sendiri dan langsung berguna, jadi berhenti di tahap mana pun tetap menyisakan sesuatu yang terpakai |

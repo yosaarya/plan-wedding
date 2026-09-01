@@ -2,9 +2,11 @@
 
 | Field | Value |
 |---|---|
-| Versi | 2.0 — pemakaian pribadi |
+| Versi | 2.1 — pemakaian pribadi |
 | Database | PostgreSQL 15 (Supabase) |
-| DDL kanonik | `db/schema.sql` |
+| DDL kanonik | `db/schema.sql` (baseline bentuk akhir) |
+| Migrasi | `db/migrations/NNNN_*.sql`, forward-only |
+| Tabel yang belum disentuh kode | Lihat `docs/06-STATUS.md` bagian akhir |
 | Konvensi | `snake_case`, tabel jamak, PK `id uuid`, uang `bigint` rupiah, waktu `timestamptz` |
 
 ---

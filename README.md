@@ -8,6 +8,7 @@ Dipakai berdua saja — dua akun, satu data pernikahan, bisa dibuka dari HP kapa
 Tidak ada sistem penjualan, langganan, atau panel admin.
 
 > **Status:** kelima modul jalan. Siap dicoba dengan proyek Supabase sungguhan.
+> Rincian per kebutuhan: [`docs/06-STATUS.md`](docs/06-STATUS.md).
 
 ---
 
@@ -22,9 +23,14 @@ Baca berurutan:
 | 3 | [`docs/03-DESIGN.md`](docs/03-DESIGN.md) | Token warna & tipografi, tata letak, katalog komponen, format id-ID, aksesibilitas |
 | 4 | [`docs/04-RULES.md`](docs/04-RULES.md) | Aturan bisnis (A), rekayasa (B), konten (C), Definition of Done (D) |
 | 5 | [`docs/05-SCHEMA.md`](docs/05-SCHEMA.md) | Model data, relasi, view turunan, kebijakan RLS, retensi |
+| 6 | [`docs/06-STATUS.md`](docs/06-STATUS.md) | **Status per kebutuhan — apa yang sudah jadi dan apa yang belum** |
+| 7 | [`docs/07-RUNBOOK.md`](docs/07-RUNBOOK.md) | Menyiapkan Supabase, deploy, cadangan, dan apa yang dilakukan saat rusak |
 
 Nomor aturan seperti `A5.9` atau `B3.1` dirujuk langsung dari komentar di dalam SQL —
 setiap keputusan di skema bisa ditelusuri ke alasannya.
+
+**PRD adalah spesifikasi, bukan laporan.** Untuk tahu apa yang benar-benar sudah jalan,
+baca `docs/06-STATUS.md` lebih dulu.
 
 ## Menjalankan aplikasi
 
@@ -45,11 +51,12 @@ npm run test:rls               # asersi isolasi data (butuh Postgres lokal)
 
 ```
 src/
-  app/                Rute. (auth) publik, (app) terproteksi, /rsvp/[token] publik
-  components/         ui/ primitif, patterns/ komponen bersama
+  app/                17 rute. (auth) publik, (app) terproteksi, /rsvp/[token] publik
+  components/         ui/ primitif, patterns/ BottomNav
   features/           Per domain: queries.ts, actions.ts, schema.ts, lib.ts
-  lib/                supabase/, auth/, format/, whatsapp/, constants.ts
+  lib/                supabase/, auth/, format/, whatsapp/, csv.ts, constants.ts
   proxy.ts            Penyegaran sesi + guard rute
+.github/workflows/    CI: typecheck, lint, unit, RLS, build
 db/
   schema.sql          Skema kanonik PostgreSQL: tabel, enum, trigger, view, RLS, RPC
   seeds/              Template checklist (49 item), kategori anggaran, seserahan (32 item)
@@ -61,6 +68,9 @@ docs/                 Lihat tabel di atas
 ```
 
 ## Menyiapkan database
+
+Langkah lengkap beserta yang harus dikerjakan tangan ada di
+[`docs/07-RUNBOOK.md`](docs/07-RUNBOOK.md). Ringkasnya:
 
 ### Lokal (untuk menjalankan tes)
 
@@ -81,10 +91,12 @@ objek bawaan Supabase (`auth.users`, `auth.uid()`, peran `anon`/`authenticated`/
 2. Jalankan `db/schema.sql` lewat SQL Editor, lalu berkas di `db/seeds/` berurutan.
    Stub tidak diperlukan — objek `auth.*` sudah ada.
 3. **Matikan pendaftaran mandiri:** Authentication → Providers → Email → *Disable signup*.
-   Tanpa ini, siapa pun yang tahu URL-nya bisa membuat akun.
+   Tanpa ini, siapa pun yang tahu URL-nya bisa membuat akun. Ini satu-satunya kontrol
+   keamanan yang tidak bisa dipaksakan dari kode.
 4. Buat dua akun lewat Authentication → Add user.
-5. Login dengan akun pertama, isi onboarding. Akun kedua ditambahkan sebagai `partner`
-   dari halaman Profil.
+5. Login dengan akun pertama, isi onboarding.
+6. Tautkan akun kedua sebagai `partner` lewat SQL — belum ada UI-nya. Perintahnya ada di
+   RUNBOOK §2 langkah 7.
 
 ## Kenapa RLS, padahal cuma dipakai berdua
 
@@ -134,9 +146,9 @@ Dipilih supaya bagian yang paling melelahkan kalau manual selesai lebih dulu.
 | ~~T3~~ | ~~Beranda: countdown, tugas bulan ini, ringkasan~~ — selesai |
 | ~~T4~~ | ~~Seserahan, profil, PWA/A2HS, ekspor data~~ — selesai |
 
-Yang sengaja ditunda karena bisa dikerjakan belakangan tanpa mengubah apa pun:
-ubah/hapus pengeluaran dari UI, ubah alokasi kategori anggaran, mode kirim WhatsApp
-beruntun, kartu milestone di beranda, buku ucapan, dan unggah foto nota.
+Yang belum dikerjakan tercatat lengkap di [`docs/06-STATUS.md`](docs/06-STATUS.md).
+Yang terbesar: kartu milestone, buku ucapan, catatan vendor, unggah foto nota, ekspor
+JSON menyeluruh, dan menambah akun kedua lewat UI (sementara lewat SQL).
 
 Tiap tahap berdiri sendiri dan langsung berguna, jadi berhenti di tahap mana pun tetap
 menyisakan sesuatu yang terpakai.

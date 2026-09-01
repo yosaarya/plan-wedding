@@ -82,57 +82,75 @@ langsung — hanya lewat dua fungsi RPC yang mengembalikan kolom terbatas (§6.4
 
 ## 4. Struktur Direktori
 
+Pohon di bawah ini adalah **keadaan sebenarnya**, bukan rencana. Kalau kamu menambah
+direktori baru, perbarui bagian ini di PR yang sama.
+
 ```
 plan-wedding/
-├── docs/                          # dokumen ini
+├── .github/workflows/ci.yml       # typecheck, lint, unit, RLS, build
+├── docs/                          # dokumen perancangan (normatif)
 ├── db/
-│   ├── schema.sql                 # skema kanonik (referensi)
-│   ├── migrations/                # migrasi berurutan, dijalankan di CI
-│   └── seeds/                     # template checklist, budget, seserahan
+│   ├── schema.sql                 # skema kanonik — baseline, bentuk akhir
+│   ├── migrations/                # NNNN_deskripsi.sql, forward-only
+│   └── seeds/                     # template checklist, anggaran, seserahan
 ├── src/
 │   ├── app/
-│   │   ├── (marketing)/           # landing, harga, bantuan, kebijakan privasi
-│   │   ├── (auth)/
+│   │   ├── (auth)/                # publik
 │   │   │   ├── masuk/
 │   │   │   └── lupa-password/
-│   │   ├── (app)/                 # area terproteksi, memakai bottom nav
-│   │   │   ├── layout.tsx         # guard sesi + guard pernikahan
+│   │   ├── (app)/                 # terproteksi, memakai bottom nav
+│   │   │   ├── layout.tsx         # guard: requireWedding()
 │   │   │   ├── beranda/
 │   │   │   ├── checklist/
 │   │   │   ├── anggaran/
-│   │   │   ├── tamu/
+│   │   │   ├── tamu/              # + [id]/, grup/, import/, tambah/
 │   │   │   ├── seserahan/
 │   │   │   └── profil/
 │   │   ├── onboarding/
 │   │   ├── rsvp/[token]/          # PUBLIK, tanpa login
-│   │   └── api/
-│   │       └── export/[resource]/ # unduh CSV/JSON untuk cadangan
+│   │   ├── api/export/tamu/       # unduh CSV untuk cadangan
+│   │   ├── layout.tsx             # metadata, manifest, ikon
+│   │   ├── globals.css            # token desain sebagai @theme Tailwind
+│   │   └── not-found.tsx
 │   ├── components/
-│   │   ├── ui/                    # primitif: Button, Card, Sheet, Input, ...
-│   │   ├── patterns/              # StatTile, ProgressBar, EmptyState, ...
-│   │   └── features/              # komponen per modul
+│   │   ├── ui/                    # Card, ProgressBar, StatTile, EmptyState,
+│   │   │                          # DeleteButton
+│   │   └── patterns/              # BottomNav
 │   ├── features/                  # logika per domain (lihat §5)
-│   │   ├── wedding/
-│   │   ├── checklist/
-│   │   ├── budget/
-│   │   ├── guests/
-│   │   └── seserahan/
-│   ├── proxy.ts                   # penyegaran sesi + guard rute (dulu middleware.ts)
+│   │   ├── wedding/               # queries, actions, settings-actions, schema
+│   │   ├── checklist/             # queries, actions, schema, lib (+test)
+│   │   ├── budget/                # queries, actions, schema, lib (+test)
+│   │   ├── guests/                # queries, actions, schema, lib (+test),
+│   │   │                          # components/guest-form.tsx
+│   │   └── seserahan/             # queries, actions, schema, lib (+test)
 │   ├── lib/
-│   │   ├── supabase/              # klien server, klien browser, penyegar sesi
-│   │   ├── auth/                  # requireSession, requireWedding
-│   │   ├── format/                # tanggal & mata uang id-ID
-│   │   ├── whatsapp/              # normalisasi nomor, render template, deep link
-│   │   └── validation/            # skema Zod bersama
-│   └── types/database.ts          # hasil generate dari skema Supabase
-├── public/                        # ikon PWA, manifest
-├── tests/
-│   ├── e2e/                       # Playwright
-│   └── rls/                       # tes isolasi data
+│   │   ├── supabase/              # server.ts, client.ts, session.ts
+│   │   ├── auth/guards.ts         # requireSession, requireWedding, requireOwner
+│   │   ├── format/                # currency.ts, date.ts (+test)
+│   │   ├── whatsapp/              # phone.ts, message.ts (+test)
+│   │   ├── csv.ts                 # penulis CSV (+test)
+│   │   └── constants.ts           # konstanta domain
+│   ├── types/database.ts          # ditulis tangan mengikuti db/schema.sql
+│   └── proxy.ts                   # penyegaran sesi + guard rute
+├── public/
+│   ├── manifest.webmanifest
+│   └── icons/                     # 192, 512, maskable, apple-touch
+├── tests/rls/
+│   ├── isolation.sql              # asersi alur fungsional + isolasi data
+│   └── run.sh                     # bangun ulang DB bersih, lalu jalankan
 └── CLAUDE.md                      # aturan kerja untuk agen & kontributor
 ```
 
----
+**Yang sengaja TIDAK ada:**
+
+| Tidak ada | Alasan |
+|---|---|
+| `(marketing)/` | Tidak dijual, jadi tidak ada landing page atau halaman harga |
+| `lib/validation/` | Skema Zod tinggal bersama modulnya di `features/*/schema.ts`, dekat dengan yang memakainya |
+| `components/features/` | Komponen khusus satu halaman tinggal di sebelah halamannya; yang dipakai lintas halaman naik ke `features/*/components/` |
+| `emails/` | Tidak ada email transaksional selain reset password bawaan Supabase |
+| `lib/supabase/admin.ts` | Service role tidak dipakai (aturan B2.2). ESLint memblokir impornya kalau suatu saat dibuat |
+| `tests/e2e/` | Belum ada. Lihat §5 "Yang belum diuji otomatis" |
 
 ## 5. Lapisan Aplikasi
 
@@ -141,22 +159,26 @@ Setiap modul di `src/features/<domain>/` memakai struktur seragam:
 ```
 features/guests/
 ├── queries.ts     # baca data. Hanya dipanggil dari Server Component.
-├── actions.ts     # 'use server'. Mutasi. Selalu: validasi → otorisasi → tulis → revalidate.
-├── schema.ts      # skema Zod (dipakai bersama form klien & action server)
-├── types.ts       # tipe turunan
-└── lib.ts         # logika murni (hitung statistik, render template WA) — mudah diuji
+├── actions.ts     # 'use server'. Mutasi: validasi → otorisasi → tulis → revalidate.
+├── schema.ts      # skema Zod, dipakai bersama form klien dan action server
+├── lib.ts         # logika murni — tanpa React, tanpa Supabase, mudah diuji
+└── components/    # hanya bila komponennya dipakai lebih dari satu halaman
 ```
+
+Tidak semua modul punya kelimanya: `wedding/` tidak punya `lib.ts` karena logika
+murninya sudah tinggal di `lib/format/`, dan hanya `guests/` yang punya `components/`.
 
 ### Aturan tak boleh dilanggar
 
-1. Komponen klien **tidak pernah** memanggil Supabase langsung untuk data domain.
-   Baca lewat RSC, tulis lewat Server Action.
-2. Setiap Server Action diawali `const { user, weddingId } = await requireWedding()`.
-3. Klien service-role (`supabaseAdmin`) **tidak dipakai sama sekali** di MVP ini — seluruh
-   akses lewat JWT pengguna sehingga RLS selalu aktif. Bila suatu saat dibutuhkan (mis.
-   cron pengingat), impornya dibatasi ke berkas itu saja lewat ESLint `no-restricted-imports`.
+1. Komponen klien **tidak pernah** memanggil Supabase untuk data domain.
+   Baca lewat RSC, tulis lewat Server Action. Pengecualiannya cuma dua, keduanya
+   memang harus berjalan di browser: autentikasi (`masuk`, `lupa-password`,
+   tombol keluar) dan halaman RSVP publik yang memanggil RPC sebagai `anon`.
+2. Setiap Server Action diawali `await requireWedding()`.
+3. Setiap kueri tabel domain menyertakan `.eq('wedding_id', weddingId)` eksplisit,
+   meski RLS aktif. Pertahanan berlapis.
 4. Perhitungan uang memakai **integer rupiah** (`bigint` di DB, `number` di TS).
-   Tidak ada floating point untuk nominal.
+5. Service role tidak dipakai sama sekali.
 
 ### Anatomi Server Action (pola wajib)
 
@@ -167,25 +189,42 @@ export async function updateGuestRsvp(input: unknown) {
   // 1. Validasi bentuk
   const data = updateRsvpSchema.parse(input)
 
-  // 2. Otorisasi — melempar jika tidak ada sesi/akses
+  // 2. Otorisasi — mengalihkan ke /masuk atau /onboarding bila tidak layak
   const { supabase, weddingId } = await requireWedding()
 
-  // 3. Tulis. RLS adalah jaring pengaman kedua; filter eksplisit adalah yang pertama.
+  // 3. Tulis. RLS adalah jaring pengaman kedua; filter eksplisit yang pertama.
   const { error } = await supabase
     .from('guests')
     .update({ rsvp_status: data.status, attending_count: data.attendingCount })
     .eq('id', data.guestId)
     .eq('wedding_id', weddingId)
 
-  if (error) throw new AppError('GUEST_UPDATE_FAILED', error.message)
+  if (error) return { error: `Gagal menyimpan: ${error.message}` }
 
-  // 4. Segarkan cache
+  // 4. Segarkan setiap rute yang menampilkan data ini
   revalidatePath('/tamu')
   revalidatePath('/beranda')
+  return {}
 }
 ```
 
----
+Server Action mengembalikan `{ error?: string }` alih-alih melempar, supaya form bisa
+menampilkan pesannya. Yang melempar hanya guard, dan itu berakhir sebagai pengalihan
+halaman.
+
+### Yang belum diuji otomatis
+
+Jujur supaya tidak salah kira:
+
+- **Tidak ada tes E2E.** Tidak ada Playwright di proyek ini. Alur lengkap
+  (login → onboarding → tambah tamu → kirim WA → RSVP) belum pernah dijalankan mesin.
+- **Pemanggilan RPC lewat PostgREST belum diuji.** `get_rsvp_context` dan `submit_rsvp`
+  diuji lewat psql di `tests/rls/`, bukan lewat jalur HTTP yang dipakai aplikasi.
+  Halaman RSVP adalah yang pertama harus dicoba manual setelah deploy.
+- **Ukuran bundle belum pernah diukur.** Aturan B6.5 menyebut batas 200 KB gzip;
+  angkanya belum pernah diperiksa.
+- **Komponen React tidak punya unit test.** Yang diuji hanya logika murni di
+  `features/*/lib.ts` dan `lib/`.
 
 ## 6. Autentikasi & Otorisasi
 

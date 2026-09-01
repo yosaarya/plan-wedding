@@ -1,0 +1,58 @@
+name: CI
+
+# Aturan B7.4: merge ke main hanya bila seluruh pemeriksaan ini lulus.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit test
+        run: npm test
+
+      - name: Tes isolasi RLS
+        run: ./tests/rls/run.sh
+        env:
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: postgres
+
+      - name: Build
+        run: npm run build
+        env:
+          # Build hanya perlu variabel ini ada; ia tidak menghubungi Supabase.
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+          NEXT_PUBLIC_SITE_URL: https://placeholder.invalid

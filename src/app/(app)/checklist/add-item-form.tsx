@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
-import { createChecklistItem } from '@/features/checklist/actions'
+import { createChecklistCategory, createChecklistItem } from '@/features/checklist/actions'
 import type { ChecklistCategory } from '@/types/database'
 
 const inputClass = 'w-full rounded-xl border border-cream-200 bg-white px-4 py-3 text-ink-900'
@@ -91,6 +91,21 @@ export function AddItemForm({ categories }: { categories: ChecklistCategory[] })
               </option>
             ))}
           </select>
+          <button
+            type="button"
+            onClick={async () => {
+              const name = window.prompt('Nama kategori baru')
+              if (!name?.trim()) return
+              const form = new FormData()
+              form.set('name', name.trim())
+              const result = await createChecklistCategory(form)
+              if (result.error) setError(result.error)
+              else router.refresh()
+            }}
+            className="mt-1 text-xs font-semibold text-brand-600"
+          >
+            + Kategori baru
+          </button>
         </div>
         <div>
           <label htmlFor="assignedTo" className="mb-1 block text-sm text-ink-700">

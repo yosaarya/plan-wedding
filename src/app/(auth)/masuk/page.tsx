@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Suspense } from 'react'
 import { LoginForm } from './login-form'
 
@@ -15,6 +16,10 @@ export default function MasukPage() {
       <Suspense fallback={<p className="text-sm text-ink-500">Memuat…</p>}>
         <LoginForm />
       </Suspense>
+
+      <Link href="/lupa-password" className="mt-6 text-center text-sm font-semibold text-brand-600">
+        Lupa password?
+      </Link>
     </main>
   )
 }

@@ -162,9 +162,10 @@ langsung dari komentar di `db/schema.sql` dan `tests/rls/isolation.sql`.
 |---|---|
 | B5.1 | Logika murni (perhitungan countdown, agregasi anggaran, normalisasi nomor, render template WA) WAJIB punya unit test. |
 | B5.2 | Tes RLS WAJIB membuktikan: pengguna A tidak dapat membaca **maupun menulis** baris milik pernikahan B, untuk setiap tabel domain. |
-| B5.3 | Alur E2E wajib: login → onboarding → tambah tamu → kirim WA (tautan ter-generate benar) → submit RSVP → statistik beranda berubah. |
+| B5.3 | **Belum ditegakkan.** Belum ada tes E2E di proyek ini. Alur login → onboarding → tambah tamu → kirim WA → submit RSVP → statistik beranda berubah harus diperiksa **manual** setelah setiap perubahan yang menyentuh alur itu. Kalau Playwright nanti ditambahkan, alur inilah yang pertama ditulis. |
 | B5.4 | Perbaikan bug WAJIB disertai tes yang gagal sebelum perbaikan. |
-| B5.5 | Tidak ada patokan cakupan tes berupa angka; yang diwajibkan adalah B5.1–B5.4. |
+| B5.5 | Tidak ada patokan cakupan tes berupa angka; yang diwajibkan adalah B5.1, B5.2, dan B5.4. |
+| B5.6 | Komponen React tidak wajib punya unit test. Logika yang layak diuji dipindahkan ke `features/*/lib.ts` supaya bisa diuji tanpa merender apa pun. |
 
 ### B6. Kinerja
 
@@ -174,7 +175,7 @@ langsung dari komentar di `db/schema.sql` dan `tests/rls/isolation.sql`.
 | B6.2 | Agregat dihitung di database. |
 | B6.3 | Dilarang membuat pola N+1 di Server Component. Gunakan join atau satu kueri view. |
 | B6.4 | Gambar melalui `next/image`; foto sampul dipangkas maksimum 1600 px sisi terpanjang. |
-| B6.5 | Bundle JavaScript rute `(app)` dijaga di bawah 200 KB gzip. |
+| B6.5 | Bundle JavaScript rute `(app)` sebaiknya di bawah 200 KB gzip. **Belum pernah diukur** — jangan mengutip aturan ini seolah sudah dipenuhi. |
 | B6.6 | Aksi mikro (centang, ubah RSVP) memakai `useOptimistic`. |
 
 ### B7. Alur Kerja Git
@@ -184,7 +185,7 @@ langsung dari komentar di `db/schema.sql` dan `tests/rls/isolation.sql`.
 | B7.1 | Branch: `feat/…`, `fix/…`, `chore/…`, `docs/…`. |
 | B7.2 | Pesan commit memakai Conventional Commits berbahasa Inggris (`feat(guests): add csv import`). |
 | B7.3 | Commit menjelaskan apa yang berubah dan kenapa. Untuk perubahan UI, sertakan tangkapan layar di PR bila memakai PR. |
-| B7.4 | Merge ke `main` hanya bila typecheck, lint, unit test, dan `./tests/rls/run.sh` lulus. |
+| B7.4 | Merge ke `main` hanya bila CI hijau: typecheck, lint, unit test, `./tests/rls/run.sh`, dan build. Dijalankan `.github/workflows/ci.yml` pada setiap PR. |
 | B7.5 | Migrasi database dan kode yang membutuhkannya HARUS berada dalam PR yang sama. |
 | B7.6 | Dokumen di `docs/` HARUS ikut diperbarui dalam PR yang mengubah perilaku yang didokumentasikan. |
 
@@ -215,6 +216,10 @@ Sebuah fitur dianggap selesai bila **seluruh** poin terpenuhi:
 5. Angka uang memakai integer dan diformat lewat `lib/format`.
 6. Teks berbahasa Indonesia dan sesuai Bagian C.
 7. Unit test untuk logika murni sudah ada.
-8. `docs/` diperbarui bila perilaku yang didokumentasikan berubah.
+8. `docs/` diperbarui bila perilaku yang didokumentasikan berubah, termasuk baris
+   terkait di `docs/06-STATUS.md`.
 9. Tidak ada PII (nomor HP, nama tamu) di log.
 10. Bisa dipakai dengan satu tangan di HP — aksi utama berada dalam jangkauan jempol.
+
+Butir 4 dan 8 yang paling sering terlewat. Butir 8 adalah alasan `docs/06-STATUS.md`
+ada: tanpanya, dokumen perlahan berubah menjadi daftar keinginan yang dikira kenyataan.

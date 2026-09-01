@@ -1,7 +1,8 @@
 'use client'
 
 import { useOptimistic, useState, useTransition } from 'react'
-import { toggleSeserahanItem } from '@/features/seserahan/actions'
+import { deleteSeserahanItem, toggleSeserahanItem } from '@/features/seserahan/actions'
+import { DeleteButton } from '@/components/ui/delete-button'
 import { formatRupiah } from '@/lib/format/currency'
 import type { SeserahanItem } from '@/types/database'
 
@@ -10,14 +11,17 @@ export function SeserahanItemRow({ item }: { item: SeserahanItem }) {
   const [, startTransition] = useTransition()
   const [bought, setBought] = useOptimistic(item.is_purchased, (_prev, next: boolean) => next)
 
-  function toggle() {
+  function simpan(purchased: boolean, actualPrice?: number) {
     setError(null)
     startTransition(async () => {
-      setBought(!bought)
+      setBought(purchased)
 
       const form = new FormData()
       form.set('id', item.id)
-      form.set('purchased', String(!bought))
+      form.set('purchased', String(purchased))
+      if (purchased && actualPrice !== undefined) {
+        form.set('actualPrice', String(actualPrice))
+      }
 
       const result = await toggleSeserahanItem(form)
       if (result.error) setError(result.error)
@@ -33,7 +37,7 @@ export function SeserahanItemRow({ item }: { item: SeserahanItem }) {
           type="button"
           role="checkbox"
           aria-checked={bought}
-          onClick={toggle}
+          onClick={() => simpan(!bought, item.actual_price ?? undefined)}
           className="-m-2.5 flex h-11 w-11 shrink-0 items-center justify-center"
         >
           <span
@@ -79,7 +83,42 @@ export function SeserahanItemRow({ item }: { item: SeserahanItem }) {
             ) : null}
           </p>
         </div>
+
+        <DeleteButton label={item.name} onDelete={() => deleteSeserahanItem(item.id)} />
       </div>
+
+      {/* Harga sebenarnya hanya ditanyakan setelah barangnya dibeli — sebelum itu
+          angkanya belum ada (kebutuhan F5.2). */}
+      {bought ? (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            const value = new FormData(event.currentTarget).get('actualPrice')
+            const parsed = Number(value)
+            simpan(true, Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined)
+          }}
+          className="mt-2 flex items-center gap-2 pl-11"
+        >
+          <label htmlFor={`harga-${item.id}`} className="shrink-0 text-xs text-ink-500">
+            Harga sebenarnya
+          </label>
+          <input
+            id={`harga-${item.id}`}
+            name="actualPrice"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            step={1}
+            defaultValue={item.actual_price ?? ''}
+            placeholder={item.estimated_price?.toString() ?? '0'}
+            onBlur={(event) => event.currentTarget.form?.requestSubmit()}
+            className="w-32 rounded-lg border border-cream-200 px-2 py-1 text-sm text-ink-900"
+          />
+          <button type="submit" className="text-xs font-semibold text-brand-600">
+            Simpan
+          </button>
+        </form>
+      ) : null}
 
       {error ? (
         <p role="alert" className="mt-2 pl-11 text-xs text-[var(--color-danger)]">

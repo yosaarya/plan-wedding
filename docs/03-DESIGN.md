@@ -176,13 +176,17 @@ warna `--brand-500`. Ada di halaman Checklist, Anggaran, Tamu, dan Seserahan.
 
 ## 6. Komponen Inti
 
-### 6.1 Card
+Setiap komponen ditandai keadaannya: **[ada]** sudah dibangun, **[inline]** ada tapi
+ditulis langsung di halamannya belum jadi komponen bersama, **[belum]** masih rencana.
+Jangan menganggap yang bertanda *belum* sudah tersedia.
+
+### 6.1 Card **[ada]** — `components/ui/card.tsx`
 
 Permukaan putih, radius 20, padding 16, bayangan `card`.
 Varian: `default`, `outlined` (border cream-200, tanpa bayangan), `accent` (latar
 `--brand-50` untuk kartu countdown).
 
-### 6.2 CountdownCard
+### 6.2 CountdownCard **[inline]** — di `app/(app)/beranda/page.tsx`
 
 ```
 ┌──────────────────────────────────────┐
@@ -202,18 +206,18 @@ Keadaan khusus:
 - Setelah hari-H: kartu berubah menjadi "Selamat menempuh hidup baru" + ringkasan tamu hadir.
 - Tanggal belum diisi: tombol "Atur tanggal pernikahan".
 
-### 6.3 StatTile
+### 6.3 StatTile **[ada]** — `components/ui/stat-tile.tsx`
 
 Petak statistik (dipakai di header daftar tamu: 280 kepala · 2 hadir · 0 terkirim ·
 278 pending). Angka 22/700 tabular, label 12/500 `--ink-500`. Empat kolom sama lebar,
 gap 8. Setiap petak adalah tombol yang menerapkan filter terkait.
 
-### 6.4 ProgressBar
+### 6.4 ProgressBar **[ada]** — `components/ui/progress-bar.tsx`
 
 Tinggi 8, radius full, jalur `--cream-200`. Selalu berpasangan dengan label persentase
 atau nominal. Ubah warna sesuai ambang: < 90% brand, 90–100% warning, > 100% danger.
 
-### 6.5 ChecklistItem
+### 6.5 ChecklistItem **[ada]** — `app/(app)/checklist/checklist-item.tsx`
 
 ```
 ┌──────────────────────────────────────┐
@@ -222,10 +226,13 @@ atau nominal. Ubah warna sesuai ambang: < 90% brand, 90–100% warning, > 100% d
 └──────────────────────────────────────┘
 ```
 Kotak centang 24 px, target sentuh 44 px. Item selesai: teks `--ink-500` dengan coretan,
-kotak terisi `--sage-500`. Geser ke kiri untuk hapus (dengan konfirmasi).
-Optimistic: centang berubah seketika; jika gagal, kembali + toast.
+kotak terisi `--sage-500`. Optimistic: centang berubah seketika; jika gagal, nilainya
+kembali dan pesan error muncul di bawah baris.
 
-### 6.6 GuestRow
+Penghapusan memakai `DeleteButton` (§6.11), bukan geser ke kiri — gestur geser tidak
+punya padanan di desktop dan tidak terlihat oleh pembaca layar.
+
+### 6.6 GuestRow **[ada]** — `app/(app)/tamu/guest-row.tsx`
 
 ```
 ┌──────────────────────────────────────┐
@@ -236,28 +243,48 @@ Optimistic: centang berubah seketika; jika gagal, kembali + toast.
 Avatar huruf awal dengan warna dari grup. Badge status: Pending (cream-200/ink-700),
 Hadir (sage-50/sage-700), Tidak hadir (ink-300/ink-700), Terkirim (brand-50/brand-700).
 
-### 6.7 Chip filter
+### 6.7 Chip filter **[ada]** — `app/(app)/tamu/filter-chips.tsx`
 
 Baris chip yang bisa digeser horizontal di bawah kolom pencarian. Chip aktif: latar
 `--brand-500`, teks putih. Chip dengan hitungan menampilkan angka di dalamnya
 ("Lunas 220"). Tinggi 32, radius full, padding 12.
 
-### 6.8 Sheet (bottom sheet)
+### 6.8 Form tambah/ubah **[ada, bukan sheet]**
 
-Semua form tambah/ubah memakai bottom sheet, bukan halaman baru — mempertahankan konteks
-daftar. Tinggi maksimum 90vh, sudut atas radius 24, ada handle geser, tutup dengan geser
-ke bawah atau tombol batal. Fokus terkunci di dalam sheet.
+Rancangan awal memakai bottom sheet. Yang dibangun memakai dua pola yang lebih sederhana,
+dan keduanya sudah memenuhi tujuan aslinya — mempertahankan konteks daftar:
 
-### 6.9 EmptyState
+- **Kartu yang mengembang di tempat** untuk isian pendek: tambah tugas, catat
+  pengeluaran, tambah barang seserahan. Tombol `+` melayang berubah menjadi kartu form
+  di aliran halaman.
+- **Halaman tersendiri** untuk isian panjang: tambah/ubah tamu, import daftar nama.
+  Punya URL sendiri sehingga bisa dibagikan dan tombol kembali bekerja wajar.
+
+Bottom sheet dengan fokus terkunci dan gestur geser **belum dibangun**. Kalau nanti
+dikerjakan, ia menggantikan pola pertama, bukan yang kedua.
+
+### 6.9 EmptyState **[ada]** — `components/ui/empty-state.tsx`
 
 Ilustrasi garis sederhana (blush + cream) + judul + satu kalimat manfaat + satu tombol.
 Contoh: "Belum ada tamu — Tambahkan tamu untuk mulai menyebar undangan lewat WhatsApp.
 [Tambah tamu] [Import dari file]".
 
-### 6.10 Toast
+### 6.10 Toast **[belum]**
 
-Muncul di atas bottom nav, durasi 4 detik, satu baris teks + opsi "Urungkan" untuk aksi
-hapus. Tanpa suara, tanpa animasi berlebihan.
+Rencana: muncul di atas bottom nav, durasi 4 detik, satu baris teks + opsi "Urungkan"
+untuk aksi hapus.
+
+Sementara ini umpan balik memakai dua cara yang lebih sederhana: pesan error muncul di
+tempat (`role="alert"` di dekat form atau baris yang bersangkutan), dan konfirmasi
+simpan muncul sebagai teks `role="status"`. Karena "Urungkan" belum ada, setiap
+penghapusan memakai konfirmasi dua langkah lebih dulu (§6.11).
+
+### 6.11 DeleteButton **[ada]** — `components/ui/delete-button.tsx`
+
+Tombol `×` di ujung baris. Sekali tekan berubah menjadi pasangan "Batal / Hapus",
+sehingga tidak ada penghapusan yang terjadi dari satu ketukan tak sengaja. Dipakai untuk
+baris di dalam daftar; penghapusan yang lebih berat (tamu, pernikahan) memakai dialog
+tersendiri yang menjelaskan akibatnya.
 
 ---
 
@@ -331,18 +358,25 @@ Hormati `prefers-reduced-motion: reduce` — matikan transform, sisakan perubaha
 
 ## 12. Peta Layar
 
-| Layar | Isi utama |
+Rute yang **sudah ada** (17 rute; jalankan `npm run build` untuk daftar terkini):
+
+| Rute | Isi |
 |---|---|
-| Beranda | Salam · CountdownCard · Tugas Bulan Ini · Anggaran · Tamu · Milestone |
-| Checklist | Progres keseluruhan · chip kategori · daftar item · FAB tambah |
-| Detail kategori | Progres kategori · daftar item · tambah item |
-| Anggaran | Ringkasan (total/terpakai/sisa) · bar per kategori · pengeluaran terbaru · FAB |
-| Detail kategori anggaran | Alokasi vs terpakai · daftar pengeluaran |
-| Tamu | StatTile · pencarian · chip filter · daftar tamu · FAB |
-| Detail tamu | Data tamu · status RSVP · tombol WhatsApp · riwayat |
-| Import tamu | Tempel daftar / unggah CSV · pratinjau · konfirmasi |
-| Seserahan | Progres · daftar per kategori · tautan toko yang ditempel sendiri |
-| Profil | Data pernikahan · anggota · template WA · pengaturan · bantuan · keluar |
-| RSVP publik | Nama pengantin · tanggal & lokasi · pilihan hadir · jumlah orang · ucapan |
-| Onboarding | 4 langkah, satu pertanyaan per layar, indikator progres |
-| Masuk | Email + password, tautan "lupa password" |
+| `/beranda` | Salam · countdown · tugas bulan ini · anggaran · tamu |
+| `/checklist` | Progres keseluruhan · chip filter · daftar per kategori · FAB tambah |
+| `/anggaran` | Ringkasan · bar per kategori · pengeluaran terbaru · FAB |
+| `/tamu` | StatTile · pencarian · chip filter · daftar · FAB |
+| `/tamu/[id]` | Status RSVP · ubah data · hapus |
+| `/tamu/tambah` | Form tamu baru |
+| `/tamu/import` | Tempel daftar nama · pratinjau · konfirmasi |
+| `/tamu/grup` | Buat & lihat grup |
+| `/seserahan` | Progres belanja · daftar per kategori · FAB |
+| `/profil` | Data pernikahan · acara utama · template WA · cadangan · keluar |
+| `/rsvp/[token]` | PUBLIK — nama pengantin · tanggal & lokasi · pilihan hadir · ucapan |
+| `/onboarding` | Tiga kelompok pertanyaan dalam satu halaman |
+| `/masuk`, `/lupa-password` | Autentikasi |
+| `/api/export/tamu` | Unduh CSV |
+
+Yang **belum ada** dan disebut di rancangan awal: halaman detail kategori checklist,
+halaman detail kategori anggaran, dan halaman buku ucapan. Status lengkap per kebutuhan
+ada di `docs/06-STATUS.md`.

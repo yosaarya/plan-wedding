@@ -127,6 +127,7 @@ export default async function ChecklistPage({ searchParams }: { searchParams: Se
                       key={item.id}
                       item={item}
                       late={terlambat(item, today)}
+                      categories={categories}
                     />
                   ))}
                 </ul>

@@ -1,13 +1,29 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useOptimistic, useState, useTransition } from 'react'
-import { toggleChecklistItem } from '@/features/checklist/actions'
+import {
+  deleteChecklistItem,
+  toggleChecklistItem,
+  updateChecklistItem,
+} from '@/features/checklist/actions'
+import { DeleteButton } from '@/components/ui/delete-button'
 import { LABEL_PJ, LABEL_PRIORITAS } from '@/features/checklist/lib'
 import { formatTanggalPendek } from '@/lib/format/date'
-import type { ChecklistItem as Item } from '@/types/database'
+import type { ChecklistCategory, ChecklistItem as Item } from '@/types/database'
 
-export function ChecklistItemRow({ item, late }: { item: Item; late: boolean }) {
+export function ChecklistItemRow({
+  item,
+  late,
+  categories,
+}: {
+  item: Item
+  late: boolean
+  categories: ChecklistCategory[]
+}) {
+  const router = useRouter()
   const [error, setError] = useState<string | null>(null)
+  const [editing, setEditing] = useState(false)
   const [, startTransition] = useTransition()
 
   // Centang harus terasa instan — ini aksi paling sering dilakukan (aturan B6.6).
@@ -50,13 +66,16 @@ export function ChecklistItemRow({ item, late }: { item: Item; late: boolean }) 
         </button>
 
         <div className="min-w-0 flex-1">
-          <p
-            className={`text-[15px] ${
+          <button
+            type="button"
+            onClick={() => setEditing((v) => !v)}
+            aria-expanded={editing}
+            className={`block w-full text-left text-[15px] ${
               done ? 'text-ink-500 line-through' : 'font-medium text-ink-900'
             }`}
           >
             {item.title}
-          </p>
+          </button>
 
           <p className="flex flex-wrap items-center gap-x-2 text-xs text-ink-500">
             {item.due_date ? (
@@ -71,7 +90,116 @@ export function ChecklistItemRow({ item, late }: { item: Item; late: boolean }) 
 
           {item.notes ? <p className="mt-1 text-xs text-ink-700">{item.notes}</p> : null}
         </div>
+
+        <DeleteButton label={`tugas ${item.title}`} onDelete={() => deleteChecklistItem(item.id)} />
       </div>
+
+      {editing ? (
+        <form
+          action={async (formData) => {
+            const result = await updateChecklistItem(item.id, formData)
+            if (result.error) {
+              setError(result.error)
+              return
+            }
+            setEditing(false)
+            router.refresh()
+          }}
+          className="mt-3 space-y-2 border-t border-cream-200 pt-3 pl-11"
+        >
+          <label className="block text-xs text-ink-500">
+            Judul
+            <input
+              name="title"
+              required
+              maxLength={200}
+              defaultValue={item.title}
+              className="mt-1 w-full rounded-lg border border-cream-200 px-3 py-2 text-sm text-ink-900"
+            />
+          </label>
+
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block text-xs text-ink-500">
+              Tenggat
+              <input
+                name="dueDate"
+                type="date"
+                defaultValue={item.due_date ?? ''}
+                className="mt-1 w-full rounded-lg border border-cream-200 px-3 py-2 text-sm text-ink-900"
+              />
+            </label>
+            <label className="block text-xs text-ink-500">
+              Prioritas
+              <select
+                name="priority"
+                defaultValue={item.priority}
+                className="mt-1 w-full rounded-lg border border-cream-200 px-3 py-2 text-sm text-ink-900"
+              >
+                <option value="low">Rendah</option>
+                <option value="normal">Normal</option>
+                <option value="high">Tinggi</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block text-xs text-ink-500">
+              Kategori
+              <select
+                name="categoryId"
+                defaultValue={item.category_id ?? ''}
+                className="mt-1 w-full rounded-lg border border-cream-200 px-3 py-2 text-sm text-ink-900"
+              >
+                <option value="">Tanpa kategori</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-xs text-ink-500">
+              Siapa
+              <select
+                name="assignedTo"
+                defaultValue={item.assigned_to}
+                className="mt-1 w-full rounded-lg border border-cream-200 px-3 py-2 text-sm text-ink-900"
+              >
+                <option value="both">Berdua</option>
+                <option value="groom">Pria</option>
+                <option value="bride">Wanita</option>
+              </select>
+            </label>
+          </div>
+
+          <label className="block text-xs text-ink-500">
+            Catatan
+            <textarea
+              name="notes"
+              rows={2}
+              maxLength={1000}
+              defaultValue={item.notes ?? ''}
+              className="mt-1 w-full rounded-lg border border-cream-200 px-3 py-2 text-sm text-ink-900"
+            />
+          </label>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              className="flex-1 rounded-full border border-cream-200 px-3 py-2 text-xs font-semibold text-ink-700"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              className="flex-1 rounded-full bg-sage-500 px-3 py-2 text-xs font-semibold text-white"
+            >
+              Simpan
+            </button>
+          </div>
+        </form>
+      ) : null}
 
       {error ? (
         <p role="alert" className="mt-2 pl-11 text-xs text-[var(--color-danger)]">

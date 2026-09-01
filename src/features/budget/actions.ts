@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireWedding } from '@/lib/auth/guards'
-import { budgetCategorySchema, expenseSchema, totalBudgetSchema } from './schema'
+import { budgetCategorySchema, expenseSchema } from './schema'
 
 type Result = { error?: string }
 
@@ -67,23 +67,6 @@ export async function deleteExpense(id: string): Promise<Result> {
     .eq('wedding_id', weddingId)
 
   if (error) return { error: `Gagal menghapus pengeluaran: ${error.message}` }
-
-  revalidateBudgetViews()
-  return {}
-}
-
-export async function setTotalBudget(formData: FormData): Promise<Result> {
-  const parsed = totalBudgetSchema.safeParse(Object.fromEntries(formData))
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Nominal belum benar.' }
-
-  const { supabase, weddingId } = await requireWedding()
-
-  const { error } = await supabase
-    .from('weddings')
-    .update({ total_budget: parsed.data.totalBudget })
-    .eq('id', weddingId)
-
-  if (error) return { error: `Gagal menyimpan total budget: ${error.message}` }
 
   revalidateBudgetViews()
   return {}
