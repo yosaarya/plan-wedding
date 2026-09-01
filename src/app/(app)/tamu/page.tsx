@@ -55,14 +55,26 @@ export default async function TamuPage({ searchParams }: { searchParams: SearchP
 
   return (
     <div className="space-y-4">
-      <header>
-        <h1 className="font-[family-name:var(--font-display)] text-2xl leading-8 font-semibold text-ink-900">
-          Daftar Undangan
-        </h1>
-        {/* "Undangan" dan "kepala" adalah dua angka berbeda (aturan A5.1). */}
-        <p className="tabular text-xs text-ink-500">
-          {stats.guest_invitations} undangan &middot; {stats.guest_headcount} kepala
-        </p>
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="font-[family-name:var(--font-display)] text-2xl leading-8 font-semibold text-ink-900">
+            Daftar Undangan
+          </h1>
+          {/* "Undangan" dan "kepala" adalah dua angka berbeda (aturan A5.1). */}
+          <p className="tabular text-xs text-ink-500">
+            {stats.guest_invitations} undangan &middot; {stats.guest_headcount} kepala
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1 pt-1">
+          <Link href="/tamu/grup" className="text-xs font-semibold text-brand-600">
+            Kelola grup
+          </Link>
+          {stats.guest_invitations > 0 ? (
+            <a href="/api/export/tamu" className="text-xs font-semibold text-brand-600">
+              Unduh CSV
+            </a>
+          ) : null}
+        </div>
       </header>
 
       <div className="flex gap-2">

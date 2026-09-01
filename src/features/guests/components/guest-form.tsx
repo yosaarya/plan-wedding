@@ -2,20 +2,22 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { createGuest } from '@/features/guests/actions'
-import type { GuestGroup } from '@/types/database'
+import { createGuest, updateGuest } from '@/features/guests/actions'
+import { formatNomorTampilan } from '@/lib/whatsapp/phone'
+import type { Guest, GuestGroup } from '@/types/database'
 
 const inputClass = 'w-full rounded-xl border border-cream-200 bg-white px-4 py-3 text-ink-900'
 
-export function GuestForm({
-  groups,
-  groomName,
-  brideName,
-}: {
+type Props = {
   groups: GuestGroup[]
   groomName: string
   brideName: string
-}) {
+  /** Bila diisi, form berada dalam mode ubah. */
+  guest?: Guest
+}
+
+export function GuestForm({ groups, groomName, brideName, guest }: Props) {
+  const editing = guest !== undefined
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [warning, setWarning] = useState<string | null>(null)
@@ -26,7 +28,7 @@ export function GuestForm({
     setError(null)
     setWarning(null)
 
-    const result = await createGuest(formData)
+    const result = editing ? await updateGuest(guest.id, formData) : await createGuest(formData)
 
     if (result.error) {
       setError(result.error)
@@ -50,7 +52,14 @@ export function GuestForm({
         <label htmlFor="name" className="mb-1 block text-sm font-semibold text-ink-900">
           Nama
         </label>
-        <input id="name" name="name" required maxLength={120} className={inputClass} />
+        <input
+          id="name"
+          name="name"
+          required
+          maxLength={120}
+          defaultValue={guest?.name ?? ''}
+          className={inputClass}
+        />
       </div>
 
       <div>
@@ -63,6 +72,7 @@ export function GuestForm({
           type="tel"
           inputMode="tel"
           placeholder="081234567890"
+          defaultValue={formatNomorTampilan(guest?.phone ?? null)}
           className={inputClass}
         />
         <p className="mt-1 text-xs text-ink-500">
@@ -81,7 +91,7 @@ export function GuestForm({
           inputMode="numeric"
           min={1}
           max={50}
-          defaultValue={1}
+          defaultValue={guest?.headcount ?? 1}
           required
           className={inputClass}
         />
@@ -94,7 +104,12 @@ export function GuestForm({
         <label htmlFor="groupId" className="mb-1 block text-sm font-semibold text-ink-900">
           Grup
         </label>
-        <select id="groupId" name="groupId" defaultValue="" className={inputClass}>
+        <select
+          id="groupId"
+          name="groupId"
+          defaultValue={guest?.group_id ?? ''}
+          className={inputClass}
+        >
           <option value="">Tanpa grup</option>
           {groups.map((group) => (
             <option key={group.id} value={group.id}>
@@ -108,7 +123,7 @@ export function GuestForm({
         <label htmlFor="side" className="mb-1 block text-sm font-semibold text-ink-900">
           Dari pihak
         </label>
-        <select id="side" name="side" defaultValue="both" className={inputClass}>
+        <select id="side" name="side" defaultValue={guest?.side ?? 'both'} className={inputClass}>
           <option value="both">Keduanya</option>
           <option value="groom">{groomName}</option>
           <option value="bride">{brideName}</option>
@@ -119,7 +134,14 @@ export function GuestForm({
         <label htmlFor="note" className="mb-1 block text-sm font-semibold text-ink-900">
           Catatan
         </label>
-        <textarea id="note" name="note" rows={2} maxLength={500} className={inputClass} />
+        <textarea
+          id="note"
+          name="note"
+          rows={2}
+          maxLength={500}
+          defaultValue={guest?.note ?? ''}
+          className={inputClass}
+        />
       </div>
 
       {error ? (
@@ -149,7 +171,7 @@ export function GuestForm({
         disabled={pending}
         className="w-full rounded-full bg-sage-500 px-5 py-3.5 font-semibold text-white disabled:opacity-60"
       >
-        {pending ? 'Menyimpan…' : 'Simpan tamu'}
+        {pending ? 'Menyimpan…' : editing ? 'Simpan perubahan' : 'Simpan tamu'}
       </button>
     </form>
   )

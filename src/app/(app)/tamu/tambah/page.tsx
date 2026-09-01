@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { listGuestGroups } from '@/features/guests/queries'
 import { getWedding } from '@/features/wedding/queries'
-import { GuestForm } from './guest-form'
+import { GuestForm } from '@/features/guests/components/guest-form'
 
 export const metadata = { title: 'Tambah tamu — Persiapan Nikah' }
 

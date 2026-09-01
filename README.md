@@ -8,8 +8,8 @@ Dipakai berdua saja — dua akun, satu data pernikahan, bisa dibuka dari HP kapa
 Tidak ada sistem penjualan, langganan, atau panel admin.
 
 > **Status:** T0 dan T1 selesai. Login, onboarding + seeding, beranda, modul tamu
-> (daftar, pencarian, filter, import, tombol WhatsApp), dan halaman RSVP publik sudah
-> jalan. Checklist, anggaran, seserahan, dan profil belum.
+> (daftar, pencarian, filter, import, ubah/hapus, grup, ekspor CSV, tombol WhatsApp),
+> dan halaman RSVP publik sudah jalan. Checklist, anggaran, seserahan, dan profil belum.
 
 ---
 
@@ -136,9 +136,8 @@ Dipilih supaya bagian yang paling melelahkan kalau manual selesai lebih dulu.
 | T3 | Beranda: melengkapi daftar tugas & milestone (kartu ringkasannya sudah ada) |
 | T4 | Seserahan, profil, PWA/A2HS, ekspor data |
 
-Belum dikerjakan dari T1: ubah & hapus tamu dari UI, kelola grup, ekspor CSV, dan
-mode kirim beruntun. Aksinya sudah ada di `features/guests/actions.ts`, tinggal
-halamannya.
+Belum dikerjakan dari T1: mode kirim beruntun (buka WhatsApp satu per satu dengan
+penanda posisi terakhir).
 
 Tiap tahap berdiri sendiri dan langsung berguna, jadi berhenti di tahap mana pun tetap
 menyisakan sesuatu yang terpakai.

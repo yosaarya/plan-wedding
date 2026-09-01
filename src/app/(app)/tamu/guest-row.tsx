@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, useTransition } from 'react'
 import { markInvitationSent } from '@/features/guests/actions'
 import { buatTautanRsvp, inisial, KELAS_BADGE_RSVP, LABEL_RSVP } from '@/features/guests/lib'
@@ -48,7 +49,7 @@ export function GuestRow({ guest, groomName, brideName, eventDate, template, sit
         {inisial(guest.name)}
       </span>
 
-      <div className="min-w-0 flex-1">
+      <Link href={`/tamu/${guest.id}`} className="min-w-0 flex-1">
         <p className="truncate text-[15px] font-semibold text-ink-900">{guest.name}</p>
         <p className="flex flex-wrap items-center gap-x-2 text-xs text-ink-500">
           <span className="tabular">{guest.headcount} pax</span>
@@ -60,7 +61,7 @@ export function GuestRow({ guest, groomName, brideName, eventDate, template, sit
           </span>
           {sent ? <span className="text-sage-700">Terkirim</span> : null}
         </p>
-      </div>
+      </Link>
 
       {waUrl ? (
         <a
